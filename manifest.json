@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "CommitCrawler",
+  "version": "1.0",
+  "description": "CommitCrawler",
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "activeTab",
+    "scripting",
+    "clipboardWrite",
+    "debugger",
+    "tabs"
+  ],
+  "host_permissions": ["*://new-m.pay.naver.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "base.html",
+    "default_icon": {
+      "16": "static/images/toolbar.png",
+      "48": "static/images/toolbar.png",
+      "128": "static/images/toolbar.png"
+    }
+  }
+}
