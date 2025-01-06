@@ -1,8 +1,8 @@
-import { MonitoringState } from "./services/monitoring-state.js";
-import { DebuggerService } from "./services/debugger-service.js";
-import { MessageService } from "./services/message-service.js";
+import { MonitoringController } from "./services/MonitoringController.js";
+import { DebuggerService } from "./services/DebuggerService.js";
+import { MessageDispatcher } from "./services/MessageDispatcher.js";
 
-const monitoringState = new MonitoringState();
+const monitoringController = new MonitoringController();
 const debuggerService = new DebuggerService();
 
 // 모니터링 시작 처리
@@ -27,14 +27,20 @@ async function handleStartMonitoring(sendResponse) {
       currentWindow: true,
     });
 
-    monitoringState.startMonitoring();
+    if (!tab?.id) {
+      throw new Error("활성 탭을 찾을 수 없습니다.");
+    }
+
+    monitoringController.startMonitoring();
     await debuggerService.attach(tab.id);
 
     // 5초 타임아웃 설정
-    monitoringState.setTimeout(() => {
-      monitoringState.stopMonitoring();
-      debuggerService.detach(tab.id);
-      MessageService.sendMonitoringFailed("API 응답 시간 초과");
+    monitoringController.setTimeout(() => {
+      monitoringController.stopMonitoring();
+      if (tab.id) {
+        debuggerService.detach(tab.id);
+      }
+      MessageDispatcher.sendMonitoringFailed("API 응답 시간 초과");
     }, 5000);
 
     // 페이지 새로고침
@@ -43,12 +49,12 @@ async function handleStartMonitoring(sendResponse) {
     sendResponse({ status: "success" });
   } catch (error) {
     console.error("Monitoring start failed:", error);
-    MessageService.sendMonitoringFailed("모니터링 시작 실패");
+    MessageDispatcher.sendMonitoringFailed("모니터링 시작 실패");
   }
 }
 
 async function handleNetworkResponse(source, params) {
-  if (!monitoringState.isMonitoring) return;
+  if (!monitoringController.isMonitoring) return;
 
   if (params.response.url.includes("/api/common/cart")) {
     try {
@@ -58,13 +64,13 @@ async function handleNetworkResponse(source, params) {
       );
 
       if (response?.body) {
-        monitoringState.stopMonitoring();
+        monitoringController.stopMonitoring();
         debuggerService.detach(source.tabId);
-        MessageService.sendCopyToClipboard(response.body);
+        MessageDispatcher.sendCopyToClipboard(response.body);
       }
     } catch (error) {
       console.error("Response body error:", error);
-      MessageService.sendMonitoringFailed("응답 데이터 가져오기 실패");
+      MessageDispatcher.sendMonitoringFailed("응답 데이터 가져오기 실패");
     }
   }
 }
