@@ -1,0 +1,20 @@
+{
+  "name": "commitcrawler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "background.js",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "postbuild": "cp -r public/* dist/ && cp src/*.js dist/",
+    "watch": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chrome": "^0.0.xxx",
+    "typescript": "^5.x.x"
+  }
+}
