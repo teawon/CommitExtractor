@@ -1,3 +1,5 @@
+export {};
+
 interface StatusElements {
   button: HTMLButtonElement;
   status: HTMLDivElement;
@@ -8,12 +10,14 @@ interface MonitoringResponse {
   error?: string;
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  const elements = getStatusElements();
-  if (!elements) return;
+(async function initializePopup() {
+  document.addEventListener("DOMContentLoaded", function () {
+    const elements = getStatusElements();
+    if (!elements) return;
 
-  setupEventListeners(elements);
-});
+    setupEventListeners(elements);
+  });
+})();
 
 function getStatusElements(): StatusElements | null {
   const startButton = document.getElementById(
@@ -55,7 +59,7 @@ async function handleStartButtonClick(elements: StatusElements): Promise<void> {
       currentWindow: true,
     });
 
-    if (!tab?.url?.includes("new-m.pay.naver.com")) {
+    if (!tab?.url?.includes("merge_requests")) {
       status.textContent = "올바른 페이지가 아닙니다!";
       button.disabled = false;
       return;
