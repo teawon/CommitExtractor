@@ -1,5 +1,3 @@
-export {};
-
 interface StatusElements {
   button: HTMLButtonElement;
   status: HTMLDivElement;
@@ -91,9 +89,8 @@ function handleRuntimeMessage(
   switch (message.action) {
     case "copyToClipboard":
       if (message.data) {
-        const prettyData = JSON.stringify(JSON.parse(message.data), null, 2);
         navigator.clipboard
-          .writeText(prettyData)
+          .writeText(message.data)
           .then(() => {
             console.log("API 응답이 클립보드에 복사되었습니다.");
             status.textContent = "데이터가 복사되었습니다!";

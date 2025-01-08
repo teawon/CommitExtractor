@@ -12,7 +12,7 @@
     "debugger",
     "tabs"
   ],
-  "host_permissions": ["*://gitlab.gabia.com/*"],
+  "host_permissions": ["*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -24,11 +24,5 @@
       "48": "static/images/toolbar.png",
       "128": "static/images/toolbar.png"
     }
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["popup.js", "background.js"],
-      "matches": ["*://gitlab.gabia.com/*", "chrome-extension://*/*"]
-    }
-  ]
+  }
 }
