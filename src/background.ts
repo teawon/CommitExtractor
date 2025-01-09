@@ -137,16 +137,45 @@ async function handleNetworkResponse(source, params) {
               return a.key.localeCompare(b.key);
             });
 
-          // 정렬된 결과를 문자열로 변환하되 JSON 형식 유지
-          const result = {
-            text: sortedCommits
-              .map(({ key, message }) => `${key} : ${message}`)
-              .join("\n"),
-          };
+          // 정렬된 결과를 문자열로 변환
+          const formattedText = sortedCommits
+            .map(({ key, message }) => {
+              return key === "-" ? `- ${message}` : `- ${key} : ${message}`;
+            })
+            .join("\n");
+
+          // 티켓 번호 요약 생성
+          const ticketSummary = sortedCommits.reduce((acc, { key }) => {
+            if (key !== "-") {
+              // 티켓 타입별로 분류 (DEV, QA 등)
+              const ticketType = key.split(/[-_]/)[0];
+              const ticketNumber = key.split(/[-_]/)[1];
+
+              if (!acc[ticketType]) {
+                acc[ticketType] = [];
+              }
+              acc[ticketType].push(ticketNumber);
+            }
+            return acc;
+          }, {} as Record<string, string[]>);
+
+          // 티켓 요약 텍스트 생성
+          const summaryText = Object.entries(ticketSummary)
+            .map(([type, numbers]) => {
+              const sortedNumbers = numbers
+                .map(Number)
+                .sort((a, b) => a - b)
+                .join(",");
+              return `${type}_${sortedNumbers}`;
+            })
+            .join(" / ");
+
+          // 최종 텍스트 생성 (커밋 목록 + 요약)
+          const finalText = formattedText + "\n\n" + summaryText;
 
           monitoringController.stopMonitoring();
           debuggerService.detach(source.tabId);
-          MessageDispatcher.sendCopyToClipboard(JSON.stringify(result));
+          MessageDispatcher.sendCopyToClipboard(finalText);
         } catch (error) {
           console.error("Parsing error:", error);
           MessageDispatcher.sendMonitoringFailed("커밋 데이터 파싱 실패");
