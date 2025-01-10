@@ -8,16 +8,7 @@ interface MonitoringResponse {
   error?: string;
 }
 
-(async function initializePopup() {
-  document.addEventListener("DOMContentLoaded", function () {
-    const elements = getStatusElements();
-    if (!elements) return;
-
-    setupEventListeners(elements);
-  });
-})();
-
-function getStatusElements(): StatusElements | null {
+const getStatusElements = (): StatusElements | null => {
   const startButton = document.getElementById(
     "startButton"
   ) as HTMLButtonElement;
@@ -29,25 +20,26 @@ function getStatusElements(): StatusElements | null {
   }
 
   return { button: startButton, status: statusDiv };
-}
+};
 
-function setupEventListeners(elements: StatusElements): void {
-  const { button, status } = elements;
+const setupEventListeners = (elements: StatusElements): void => {
+  const { button } = elements;
 
-  button.addEventListener("click", () => handleStartButtonClick(elements));
+  button.addEventListener("click", () => handleStartCommitCrawling(elements));
 
-  // 메시지 리스너
+  // TODO Extenstion 환경에서 받아오는 메세지는 별도의 인스턴스로 분리하기(인터페이스)
   chrome.runtime.onMessage.addListener(
     (message: { action: string; data?: string; error?: string }) => {
-      handleRuntimeMessage(message, elements);
+      handleClipboardCopy(message, elements);
     }
   );
-}
+};
 
-async function handleStartButtonClick(elements: StatusElements): Promise<void> {
+const handleStartCommitCrawling = async (
+  elements: StatusElements
+): Promise<void> => {
   const { button, status } = elements;
 
-  console.log("캡처 시작");
   status.textContent = "API 응답 대기중...";
   button.disabled = true;
 
@@ -57,11 +49,12 @@ async function handleStartButtonClick(elements: StatusElements): Promise<void> {
       currentWindow: true,
     });
 
-    if (!tab?.url?.includes("merge_requests")) {
-      status.textContent = "올바른 페이지가 아닙니다!";
-      button.disabled = false;
-      return;
-    }
+    // TODO : 페이지 검증 필요성 확인 필요
+    // if (!tab?.url?.includes("merge_requests")) {
+    //   status.textContent = "올바른 페이지가 아닙니다!";
+    //   button.disabled = false;
+    //   return;
+    // }
 
     const response = await chrome.runtime.sendMessage({
       action: "startMonitoring",
@@ -78,12 +71,12 @@ async function handleStartButtonClick(elements: StatusElements): Promise<void> {
     status.textContent = "오류가 발생했습니다!";
     button.disabled = false;
   }
-}
+};
 
-function handleRuntimeMessage(
+const handleClipboardCopy = (
   message: { action: string; data?: string; error?: string },
   elements: StatusElements
-): void {
+): void => {
   const { button, status } = elements;
 
   switch (message.action) {
@@ -110,4 +103,13 @@ function handleRuntimeMessage(
       button.disabled = false;
       break;
   }
-}
+};
+
+(async function initializePopup() {
+  document.addEventListener("DOMContentLoaded", function () {
+    const elements = getStatusElements();
+    if (!elements) return;
+
+    setupEventListeners(elements);
+  });
+})();

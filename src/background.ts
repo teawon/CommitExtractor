@@ -56,7 +56,8 @@ async function handleStartMonitoring(sendResponse) {
 async function handleNetworkResponse(source, params) {
   if (!monitoringController.isMonitoring) return;
 
-  if (params.response.url.includes("commits.json")) {
+  // TODO : 디버깅용 true 플래그값 제거
+  if (true || params.response.url.includes("commits.json")) {
     try {
       const response = await debuggerService.getResponseBody(
         source.tabId,
