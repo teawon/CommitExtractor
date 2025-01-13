@@ -1,17 +1,21 @@
-import { MonitoringController } from "./services/MonitoringController.js";
+import { TaskExecutionController } from "./services/TaskExecutionController.js";
 import { DebuggerService } from "./services/DebuggerService.js";
-import { MessageDispatcher } from "./services/MessageDispatcher.js";
+import {
+  MessageDispatcher,
+  MessagePayload,
+} from "./services/MessageDispatcher.js";
 
-const monitoringController = new MonitoringController();
+const taskExecutionController = new TaskExecutionController();
 const debuggerService = new DebuggerService();
 
-// 모니터링 시작 처리
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "startMonitoring") {
-    handleStartMonitoring(sendResponse);
-    return true;
+chrome.runtime.onMessage.addListener(
+  (message: MessagePayload, sender, sendResponse) => {
+    if (message.action === "START_INTERCEPTOR_COMMIT") {
+      handleInterceptorCommit(sendResponse);
+      return true;
+    }
   }
-});
+);
 
 // 네트워크 응답 처리
 chrome.debugger.onEvent.addListener((source, method, params) => {
@@ -20,7 +24,7 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
   }
 });
 
-async function handleStartMonitoring(sendResponse) {
+async function handleInterceptorCommit(sendResponse) {
   try {
     const [tab] = await chrome.tabs.query({
       active: true,
@@ -31,16 +35,19 @@ async function handleStartMonitoring(sendResponse) {
       throw new Error("활성 탭을 찾을 수 없습니다.");
     }
 
-    monitoringController.startMonitoring();
+    taskExecutionController.startTaskExecution();
     await debuggerService.attach(tab.id);
 
     // 5초 타임아웃 설정
-    monitoringController.setTimeout(() => {
-      monitoringController.stopMonitoring();
+    taskExecutionController.setTimeout(() => {
+      taskExecutionController.stopTaskExecution();
       if (tab.id) {
         debuggerService.detach(tab.id);
       }
-      MessageDispatcher.sendMonitoringFailed("API 응답 시간 초과");
+      MessageDispatcher.sendError(
+        "INTERCEPTOR_COMMIT_FAILED",
+        "API 응답 시간 초과"
+      );
     }, 5000);
 
     // 페이지 새로고침
@@ -48,13 +55,16 @@ async function handleStartMonitoring(sendResponse) {
 
     sendResponse({ status: "success" });
   } catch (error) {
-    console.error("Monitoring start failed:", error);
-    MessageDispatcher.sendMonitoringFailed("모니터링 시작 실패");
+    console.error("Commit crawling failed:", error);
+    MessageDispatcher.sendError(
+      "INTERCEPTOR_COMMIT_FAILED",
+      "커밋 크롤링 실패"
+    );
   }
 }
 
 async function handleNetworkResponse(source, params) {
-  if (!monitoringController.isMonitoring) return;
+  if (!taskExecutionController.isTaskExecution) return;
 
   // TODO : 디버깅용 true 플래그값 제거
   if (true || params.response.url.includes("commits.json")) {
@@ -174,17 +184,23 @@ async function handleNetworkResponse(source, params) {
           // 최종 텍스트 생성 (커밋 목록 + 요약)
           const finalText = formattedText + "\n\n" + summaryText;
 
-          monitoringController.stopMonitoring();
+          taskExecutionController.stopTaskExecution();
           debuggerService.detach(source.tabId);
-          MessageDispatcher.sendCopyToClipboard(finalText);
+          MessageDispatcher.sendSuccess("COPY_TO_CLIPBOARD", finalText);
         } catch (error) {
           console.error("Parsing error:", error);
-          MessageDispatcher.sendMonitoringFailed("커밋 데이터 파싱 실패");
+          MessageDispatcher.sendError(
+            "INTERCEPTOR_COMMIT_FAILED",
+            "커밋 데이터 파싱 실패"
+          );
         }
       }
     } catch (error) {
       console.error("Response body error:", error);
-      MessageDispatcher.sendMonitoringFailed("응답 데이터 가져오기 실패");
+      MessageDispatcher.sendError(
+        "INTERCEPTOR_COMMIT_FAILED",
+        "응답 데이터 가져오기 실패"
+      );
     }
   }
 }

@@ -1,3 +1,9 @@
+import {
+  MessageDispatcher,
+  MessagePayload,
+  MessageType,
+} from "./services/MessageDispatcher";
+
 interface StatusElements {
   button: HTMLButtonElement;
   status: HTMLDivElement;
@@ -25,17 +31,17 @@ const getStatusElements = (): StatusElements | null => {
 const setupEventListeners = (elements: StatusElements): void => {
   const { button } = elements;
 
-  button.addEventListener("click", () => handleStartCommitCrawling(elements));
+  button.addEventListener("click", () =>
+    handleStartInterceptorCommit(elements)
+  );
 
   // TODO Extenstion 환경에서 받아오는 메세지는 별도의 인스턴스로 분리하기(인터페이스)
-  chrome.runtime.onMessage.addListener(
-    (message: { action: string; data?: string; error?: string }) => {
-      handleClipboardCopy(message, elements);
-    }
-  );
+  chrome.runtime.onMessage.addListener((message: MessagePayload) => {
+    handleClipboardCopy(message, elements);
+  });
 };
 
-const handleStartCommitCrawling = async (
+const handleStartInterceptorCommit = async (
   elements: StatusElements
 ): Promise<void> => {
   const { button, status } = elements;
@@ -57,9 +63,12 @@ const handleStartCommitCrawling = async (
     // }
 
     const response = await chrome.runtime.sendMessage({
-      action: "startMonitoring",
+      action: "START_INTERCEPTOR_COMMIT",
     });
 
+    //const response = MessageDispatcher.sendSuccess("START_INTERCEPTOR_COMMIT");
+
+    console.log(response);
     if (response?.status === "success") {
       status.textContent = "API 응답 감시 중...";
     } else {
@@ -74,13 +83,13 @@ const handleStartCommitCrawling = async (
 };
 
 const handleClipboardCopy = (
-  message: { action: string; data?: string; error?: string },
+  message: MessagePayload,
   elements: StatusElements
 ): void => {
   const { button, status } = elements;
 
   switch (message.action) {
-    case "copyToClipboard":
+    case "COPY_TO_CLIPBOARD":
       if (message.data) {
         navigator.clipboard
           .writeText(message.data)
@@ -97,7 +106,7 @@ const handleClipboardCopy = (
       }
       break;
 
-    case "monitoringFailed":
+    case "INTERCEPTOR_COMMIT_FAILED":
       console.error("모니터링 실패:", message.error);
       status.textContent = `실패: ${message.error}`;
       button.disabled = false;
