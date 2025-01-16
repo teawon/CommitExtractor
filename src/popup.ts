@@ -1,17 +1,11 @@
 import {
   MessageDispatcher,
   MessagePayload,
-  MessageType,
-} from "./services/MessageDispatcher";
+} from "./services/MessageDispatcher.js";
 
 interface StatusElements {
   button: HTMLButtonElement;
   status: HTMLDivElement;
-}
-
-interface MonitoringResponse {
-  status: "success" | "error";
-  error?: string;
 }
 
 const getStatusElements = (): StatusElements | null => {
@@ -31,11 +25,10 @@ const getStatusElements = (): StatusElements | null => {
 const setupEventListeners = (elements: StatusElements): void => {
   const { button } = elements;
 
-  button.addEventListener("click", () =>
-    handleStartInterceptorCommit(elements)
-  );
+  button.addEventListener("click", () => {
+    handleStartInterceptorCommit(elements);
+  });
 
-  // TODO Extenstion 환경에서 받아오는 메세지는 별도의 인스턴스로 분리하기(인터페이스)
   chrome.runtime.onMessage.addListener((message: MessagePayload) => {
     handleClipboardCopy(message, elements);
   });
@@ -62,19 +55,16 @@ const handleStartInterceptorCommit = async (
     //   return;
     // }
 
-    const response = await chrome.runtime.sendMessage({
-      action: "START_INTERCEPTOR_COMMIT",
-    });
+    const response = await MessageDispatcher.sendSuccess(
+      "START_INTERCEPTOR_COMMIT"
+    );
 
-    //const response = MessageDispatcher.sendSuccess("START_INTERCEPTOR_COMMIT");
-
-    console.log(response);
-    if (response?.status === "success") {
+    if (response.status === "success") {
       status.textContent = "API 응답 감시 중...";
-    } else {
-      status.textContent = "시작 실패!";
-      button.disabled = false;
+      return;
     }
+    status.textContent = "시작 실패!";
+    button.disabled = false;
   } catch (error) {
     console.error("Error:", error);
     status.textContent = "오류가 발생했습니다!";
@@ -94,7 +84,6 @@ const handleClipboardCopy = (
         navigator.clipboard
           .writeText(message.data)
           .then(() => {
-            console.log("API 응답이 클립보드에 복사되었습니다.");
             status.textContent = "데이터가 복사되었습니다!";
             button.disabled = false;
           })

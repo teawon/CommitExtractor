@@ -2,7 +2,7 @@
   "name": "commitcrawler",
   "version": "1.0.0",
   "description": "",
-  "main": "background.js",
+  "main": "commitInterceptor.js",
   "scripts": {
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",

@@ -38,16 +38,12 @@ async function handleInterceptorCommit(sendResponse) {
     taskExecutionController.startTaskExecution();
     await debuggerService.attach(tab.id);
 
-    // 5초 타임아웃 설정
     taskExecutionController.setTimeout(() => {
       taskExecutionController.stopTaskExecution();
       if (tab.id) {
         debuggerService.detach(tab.id);
       }
-      MessageDispatcher.sendError(
-        "INTERCEPTOR_COMMIT_FAILED",
-        "API 응답 시간 초과"
-      );
+      MessageDispatcher.sendError("INTERCEPTOR_COMMIT_FAILED");
     }, 5000);
 
     // 페이지 새로고침
@@ -56,10 +52,7 @@ async function handleInterceptorCommit(sendResponse) {
     sendResponse({ status: "success" });
   } catch (error) {
     console.error("Commit crawling failed:", error);
-    MessageDispatcher.sendError(
-      "INTERCEPTOR_COMMIT_FAILED",
-      "커밋 크롤링 실패"
-    );
+    MessageDispatcher.sendError("INTERCEPTOR_COMMIT_FAILED");
   }
 }
 

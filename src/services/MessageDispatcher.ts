@@ -8,6 +8,11 @@ export type ErrorMessageType =
 
 export type MessageType = SuccessMessageType | ErrorMessageType;
 
+interface MessageResponse {
+  status: "success" | "error";
+  error?: string;
+}
+
 interface SuccessPayload {
   type: "success";
   action: SuccessMessageType;
@@ -26,18 +31,15 @@ export type MessagePayload = SuccessPayload | ErrorPayload;
  * Chrome 확장 프로그램의 메시지 통신을 처리
  */
 export class MessageDispatcher {
-  static sendSuccess(action: SuccessMessageType, data?: string): void {
-    this.dispatch({
+  static sendSuccess(action: SuccessMessageType, data?: string) {
+    return this.dispatch({
       type: "success",
       action,
       data,
     });
   }
 
-  static sendError(
-    action: ErrorMessageType,
-    error?: string
-  ): Promise<MessagePayload> {
+  static sendError(action: ErrorMessageType, error?: string) {
     return this.dispatch({
       type: "error",
       action,
@@ -46,6 +48,6 @@ export class MessageDispatcher {
   }
 
   private static dispatch(payload: MessagePayload) {
-    return chrome.runtime.sendMessage(payload);
+    return chrome.runtime.sendMessage<MessagePayload, MessageResponse>(payload);
   }
 }
