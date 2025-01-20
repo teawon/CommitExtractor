@@ -1,3 +1,4 @@
+import { CommitInterceptorService } from "./services/CommitInterceptorService.js";
 import { TaskExecutionController } from "./services/TaskExecutionController.js";
 import { DebuggerService } from "./services/DebuggerService.js";
 import {
@@ -5,13 +6,18 @@ import {
   MessagePayload,
 } from "./services/MessageDispatcher.js";
 
-const taskExecutionController = new TaskExecutionController();
 const debuggerService = new DebuggerService();
 
+const commitInterceptorService = new CommitInterceptorService(
+  new TaskExecutionController(),
+  debuggerService
+);
+
+// 디버거 설정 및 페이지 리로드
 chrome.runtime.onMessage.addListener(
   (message: MessagePayload, sender, sendResponse) => {
     if (message.action === "START_INTERCEPTOR_COMMIT") {
-      handleInterceptorCommit(sendResponse);
+      commitInterceptorService.initializeCommitInterceptor(sendResponse);
       return true;
     }
   }
@@ -24,40 +30,8 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
   }
 });
 
-async function handleInterceptorCommit(sendResponse) {
-  try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      lastFocusedWindow: true,
-    });
-
-    if (!tab?.id) {
-      throw new Error("활성 탭을 찾을 수 없습니다.");
-    }
-
-    taskExecutionController.startTaskExecution();
-    await debuggerService.attach(tab.id);
-
-    taskExecutionController.setTimeout(() => {
-      taskExecutionController.stopTaskExecution();
-      if (tab.id) {
-        debuggerService.detach(tab.id);
-      }
-      MessageDispatcher.sendError("INTERCEPTOR_COMMIT_FAILED");
-    }, 5000);
-
-    // 페이지 새로고침
-    await chrome.tabs.reload(tab.id);
-
-    sendResponse({ status: "success" });
-  } catch (error) {
-    console.error("Commit crawling failed:", error);
-    MessageDispatcher.sendError("INTERCEPTOR_COMMIT_FAILED");
-  }
-}
-
 async function handleNetworkResponse(source, params) {
-  if (!taskExecutionController.isTaskExecution) return;
+  if (!commitInterceptorService.isTaskExecutionActive()) return;
 
   // TODO : 디버깅용 true 플래그값 제거
   if (true || params.response.url.includes("commits.json")) {
@@ -177,8 +151,7 @@ async function handleNetworkResponse(source, params) {
           // 최종 텍스트 생성 (커밋 목록 + 요약)
           const finalText = formattedText + "\n\n" + summaryText;
 
-          taskExecutionController.stopTaskExecution();
-          debuggerService.detach(source.tabId);
+          commitInterceptorService.detachDebugger(source.tabId);
           MessageDispatcher.sendSuccess("COPY_TO_CLIPBOARD", finalText);
         } catch (error) {
           console.error("Parsing error:", error);
