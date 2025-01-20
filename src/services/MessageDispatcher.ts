@@ -1,27 +1,53 @@
-type MessageAction = "copyToClipboard" | "monitoringFailed";
+export type SuccessMessageType =
+  | "COPY_TO_CLIPBOARD"
+  | "START_INTERCEPTOR_COMMIT";
 
-interface MessagePayload {
-  action: MessageAction;
-  data?: string;
+export type ErrorMessageType =
+  | "INTERCEPTOR_COMMIT_FAILED"
+  | "DATA_PARSING_FAILED";
+
+export type MessageType = SuccessMessageType | ErrorMessageType;
+
+interface MessageResponse {
+  status: "success" | "error";
   error?: string;
 }
 
+interface SuccessPayload {
+  type: "success";
+  action: SuccessMessageType;
+  data?: string;
+}
+
+interface ErrorPayload {
+  type: "error";
+  action: ErrorMessageType;
+  error?: string;
+}
+
+export type MessagePayload = SuccessPayload | ErrorPayload;
+
+/**
+ * Chrome 확장 프로그램의 메시지 통신을 처리
+ */
 export class MessageDispatcher {
-  static sendCopyToClipboard(data: string): void {
-    this.dispatch({
-      action: "copyToClipboard",
+  static sendSuccess(action: SuccessMessageType, data?: string) {
+    return this.dispatch({
+      type: "success",
+      action,
       data,
     });
   }
 
-  static sendMonitoringFailed(error: string): void {
-    this.dispatch({
-      action: "monitoringFailed",
+  static sendError(action: ErrorMessageType, error?: string) {
+    return this.dispatch({
+      type: "error",
+      action,
       error,
     });
   }
 
-  private static dispatch(payload: MessagePayload): void {
-    chrome.runtime.sendMessage(payload);
+  private static dispatch(payload: MessagePayload) {
+    return chrome.runtime.sendMessage<MessagePayload, MessageResponse>(payload);
   }
 }

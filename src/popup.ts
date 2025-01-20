@@ -1,23 +1,14 @@
+import {
+  MessageDispatcher,
+  MessagePayload,
+} from "./services/MessageDispatcher.js";
+
 interface StatusElements {
   button: HTMLButtonElement;
   status: HTMLDivElement;
 }
 
-interface MonitoringResponse {
-  status: "success" | "error";
-  error?: string;
-}
-
-(async function initializePopup() {
-  document.addEventListener("DOMContentLoaded", function () {
-    const elements = getStatusElements();
-    if (!elements) return;
-
-    setupEventListeners(elements);
-  });
-})();
-
-function getStatusElements(): StatusElements | null {
+const getStatusElements = (): StatusElements | null => {
   const startButton = document.getElementById(
     "startButton"
   ) as HTMLButtonElement;
@@ -29,25 +20,25 @@ function getStatusElements(): StatusElements | null {
   }
 
   return { button: startButton, status: statusDiv };
-}
+};
 
-function setupEventListeners(elements: StatusElements): void {
+const setupEventListeners = (elements: StatusElements): void => {
+  const { button } = elements;
+
+  button.addEventListener("click", () => {
+    handleStartInterceptorCommit(elements);
+  });
+
+  chrome.runtime.onMessage.addListener((message: MessagePayload) => {
+    handleClipboardCopy(message, elements);
+  });
+};
+
+const handleStartInterceptorCommit = async (
+  elements: StatusElements
+): Promise<void> => {
   const { button, status } = elements;
 
-  button.addEventListener("click", () => handleStartButtonClick(elements));
-
-  // 메시지 리스너
-  chrome.runtime.onMessage.addListener(
-    (message: { action: string; data?: string; error?: string }) => {
-      handleRuntimeMessage(message, elements);
-    }
-  );
-}
-
-async function handleStartButtonClick(elements: StatusElements): Promise<void> {
-  const { button, status } = elements;
-
-  console.log("캡처 시작");
   status.textContent = "API 응답 대기중...";
   button.disabled = true;
 
@@ -57,42 +48,42 @@ async function handleStartButtonClick(elements: StatusElements): Promise<void> {
       currentWindow: true,
     });
 
-    if (!tab?.url?.includes("merge_requests")) {
-      status.textContent = "올바른 페이지가 아닙니다!";
-      button.disabled = false;
+    // TODO : 페이지 검증 필요성 확인 필요
+    // if (!tab?.url?.includes("merge_requests")) {
+    //   status.textContent = "올바른 페이지가 아닙니다!";
+    //   button.disabled = false;
+    //   return;
+    // }
+
+    const response = await MessageDispatcher.sendSuccess(
+      "START_INTERCEPTOR_COMMIT"
+    );
+
+    if (response.status === "success") {
+      status.textContent = "API 응답 감시 중...";
       return;
     }
-
-    const response = await chrome.runtime.sendMessage({
-      action: "startMonitoring",
-    });
-
-    if (response?.status === "success") {
-      status.textContent = "API 응답 감시 중...";
-    } else {
-      status.textContent = "시작 실패!";
-      button.disabled = false;
-    }
+    status.textContent = "시작 실패!";
+    button.disabled = false;
   } catch (error) {
     console.error("Error:", error);
     status.textContent = "오류가 발생했습니다!";
     button.disabled = false;
   }
-}
+};
 
-function handleRuntimeMessage(
-  message: { action: string; data?: string; error?: string },
+const handleClipboardCopy = (
+  message: MessagePayload,
   elements: StatusElements
-): void {
+): void => {
   const { button, status } = elements;
 
   switch (message.action) {
-    case "copyToClipboard":
+    case "COPY_TO_CLIPBOARD":
       if (message.data) {
         navigator.clipboard
           .writeText(message.data)
           .then(() => {
-            console.log("API 응답이 클립보드에 복사되었습니다.");
             status.textContent = "데이터가 복사되었습니다!";
             button.disabled = false;
           })
@@ -104,10 +95,19 @@ function handleRuntimeMessage(
       }
       break;
 
-    case "monitoringFailed":
+    case "INTERCEPTOR_COMMIT_FAILED":
       console.error("모니터링 실패:", message.error);
       status.textContent = `실패: ${message.error}`;
       button.disabled = false;
       break;
   }
-}
+};
+
+(async function initializePopup() {
+  document.addEventListener("DOMContentLoaded", function () {
+    const elements = getStatusElements();
+    if (!elements) return;
+
+    setupEventListeners(elements);
+  });
+})();

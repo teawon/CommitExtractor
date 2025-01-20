@@ -1,13 +1,17 @@
-interface MonitoringConfig {
+interface TaskExecutionConfig {
   timeoutDuration: number;
 }
 
-export class MonitoringController {
+/**
+ * 작업 실행을 제어하고 타임아웃을 관리하는 컨트롤러
+ * 작업의 상태를 추적하고 지정된 시간 내에 작업이 완료되지 않으면 타임아웃을 처리
+ */
+export class TaskExecutionController {
   private isActive: boolean;
   private timeoutId: ReturnType<typeof setTimeout> | null;
-  private readonly config: MonitoringConfig;
+  private readonly config: TaskExecutionConfig;
 
-  constructor(config: Partial<MonitoringConfig> = {}) {
+  constructor(config: Partial<TaskExecutionConfig> = {}) {
     this.isActive = false;
     this.timeoutId = null;
     this.config = {
@@ -15,15 +19,15 @@ export class MonitoringController {
     };
   }
 
-  get isMonitoring(): boolean {
+  get isTaskExecution(): boolean {
     return this.isActive;
   }
 
-  startMonitoring(): void {
+  startTaskExecution(): void {
     this.isActive = true;
   }
 
-  stopMonitoring(): void {
+  stopTaskExecution(): void {
     this.isActive = false;
     this.clearTimeout();
   }
@@ -32,7 +36,7 @@ export class MonitoringController {
     callback: () => void,
     delay: number = this.config.timeoutDuration
   ): void {
-    this.clearTimeout(); // 기존 타이머가 있다면 제거
+    this.clearTimeout();
 
     this.timeoutId = setTimeout(() => {
       if (this.isActive) {
