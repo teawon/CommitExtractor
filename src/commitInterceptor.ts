@@ -5,9 +5,10 @@ import {
   MessageDispatcher,
   MessagePayload,
 } from "./services/MessageDispatcher.js";
+import { GitlabCommitParser } from "./services/GitlabCommitParser.js";
 
 const debuggerService = new DebuggerService();
-
+const commitParser = new GitlabCommitParser();
 const commitInterceptorService = new CommitInterceptorService(
   new TaskExecutionController(),
   debuggerService
@@ -44,43 +45,7 @@ async function handleNetworkResponse(source, params) {
       if (response?.body) {
         try {
           const jsonResponse = JSON.parse(response.body);
-          const commits: CommitInfo[] = [];
-
-          // HTML 문자열에서 커밋 정보 추출
-          const commitPattern =
-            /<li class="commit flex-row[^>]*>[\s\S]*?<\/li>/g;
-          const messagePattern =
-            /<a class="commit-row-message item-title[^>]*>([^<]+)<\/a>/;
-          const descPattern =
-            /<pre class="commit-row-description[^>]*>([^<]+)<\/pre>/;
-          const datePattern = /<time[^>]*datetime="([^"]+)"/;
-          const authorPattern =
-            /<a class="commit-author-link[^>]*>([^<]+)<\/a>/;
-          const shaPattern =
-            /<div class="label label-monospace[^>]*>([^<]+)<\/div>/;
-
-          let match;
-          while ((match = commitPattern.exec(jsonResponse.html)) !== null) {
-            const commitHtml = match[0];
-
-            const message = messagePattern.exec(commitHtml)?.[1]?.trim();
-            const description = descPattern.exec(commitHtml)?.[1];
-            const date = datePattern.exec(commitHtml)?.[1];
-            const author = authorPattern.exec(commitHtml)?.[1]?.trim();
-            const sha = shaPattern.exec(commitHtml)?.[1]?.trim();
-
-            if (message && date && author && sha) {
-              commits.push({
-                message,
-                description: description
-                  ? decodeHtmlEntities(description.trim())
-                  : undefined,
-                date,
-                author,
-                sha,
-              });
-            }
-          }
+          const commits = commitParser.parseCommits(jsonResponse);
 
           console.log("Original commits:", commits); // 디버깅용
 
@@ -169,26 +134,4 @@ async function handleNetworkResponse(source, params) {
       );
     }
   }
-}
-
-interface CommitInfo {
-  message: string;
-  description?: string;
-  date: string;
-  author: string;
-  sha: string;
-}
-
-function decodeHtmlEntities(text: string): string {
-  const entities: Record<string, string> = {
-    "&#x000A;": "\n",
-    "&quot;": '"',
-    "&amp;": "&",
-    "&lt;": "<",
-    "&gt;": ">",
-    "&#39;": "'",
-    "&nbsp;": " ",
-  };
-
-  return text.replace(/&[#\w]+;/g, (entity) => entities[entity] || entity);
 }
