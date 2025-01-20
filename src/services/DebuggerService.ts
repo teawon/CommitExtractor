@@ -4,17 +4,21 @@ interface DebuggerResponse {
 }
 
 export class DebuggerService {
+  private attachedTabs: Set<number> = new Set();
+
   async attach(tabId: number): Promise<void> {
     await chrome.debugger.attach({ tabId }, "1.0");
     await this.enableNetworking(tabId);
+    this.attachedTabs.add(tabId);
   }
 
   private async enableNetworking(tabId: number): Promise<void> {
     await chrome.debugger.sendCommand({ tabId }, "Network.enable", {});
   }
 
-  detach(tabId: number): void {
+  public detach(tabId: number): void {
     chrome.debugger.detach({ tabId });
+    this.attachedTabs.delete(tabId);
   }
 
   async getResponseBody(

@@ -6,7 +6,7 @@ import {
   MessagePayload,
 } from "./services/MessageDispatcher.js";
 import { GitlabCommitParser } from "./services/git/parser/GitlabCommitParser.js";
-import { getGitInfo } from "./services/git/utils.js";
+import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter.js";
 
 const debuggerService = new DebuggerService();
 const commitInterceptorService = new CommitInterceptorService(
@@ -52,78 +52,16 @@ async function handleNetworkResponse(source, params) {
         try {
           const jsonResponse = JSON.parse(response.body);
           const commits = GitlabCommitParser.parseCommits(jsonResponse);
+          console.log("Original commits:", commits);
 
-          console.log("Original commits:", commits); // 디버깅용
+          const { formattedText, summaryText } =
+            CommitMessageFormatter.format(commits);
 
-          // 커밋 메시지에서 'feat:', 'fix:' 등을 제거하는 함수
-          const cleanMessage = (message: string) => {
-            return message
-              .replace(
-                /^(feat|fix|refactor|chore|docs|style|test|perf):\s*/i,
-                ""
-              )
-              .trim();
-          };
-
-          // 임시 배열로 변환하여 정렬
-          const sortedCommits = commits
-            .map((commit) => {
-              let key = "-";
-              if (commit.description) {
-                const ticketMatch = commit.description.match(/[A-Z]+[-_]\d+/);
-                if (ticketMatch) {
-                  key = ticketMatch[0];
-                }
-              }
-              return {
-                key,
-                message: cleanMessage(commit.message),
-              };
-            })
-            .sort((a, b) => {
-              if (a.key === "-") return 1;
-              if (b.key === "-") return -1;
-              return a.key.localeCompare(b.key);
-            });
-
-          // 정렬된 결과를 문자열로 변환
-          const formattedText = sortedCommits
-            .map(({ key, message }) => {
-              return key === "-" ? `- ${message}` : `- ${key} : ${message}`;
-            })
-            .join("\n");
-
-          // 티켓 번호 요약 생성
-          const ticketSummary = sortedCommits.reduce((acc, { key }) => {
-            if (key !== "-") {
-              // 티켓 타입별로 분류 (DEV, QA 등)
-              const ticketType = key.split(/[-_]/)[0];
-              const ticketNumber = key.split(/[-_]/)[1];
-
-              if (!acc[ticketType]) {
-                acc[ticketType] = [];
-              }
-              acc[ticketType].push(ticketNumber);
-            }
-            return acc;
-          }, {} as Record<string, string[]>);
-
-          // 티켓 요약 텍스트 생성
-          const summaryText = Object.entries(ticketSummary)
-            .map(([type, numbers]) => {
-              const sortedNumbers = numbers
-                .map(Number)
-                .sort((a, b) => a - b)
-                .join(",");
-              return `${type}_${sortedNumbers}`;
-            })
-            .join(" / ");
-
-          // 최종 텍스트 생성 (커밋 목록 + 요약)
-          const finalText = formattedText + "\n\n" + summaryText;
+          // TODO 추후 객체 데이터를 보내고, 내부 UI 구조와 클립보드 분리할것
+          const result = formattedText + "\n\n" + summaryText;
 
           commitInterceptorService.detachDebugger(source.tabId);
-          MessageDispatcher.sendSuccess("COPY_TO_CLIPBOARD", finalText);
+          MessageDispatcher.sendSuccess("COPY_TO_CLIPBOARD", result);
         } catch (error) {
           console.error("Parsing error:", error);
           MessageDispatcher.sendError(
