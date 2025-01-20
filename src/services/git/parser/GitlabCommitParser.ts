@@ -1,11 +1,4 @@
-export interface CommitInfo {
-  message: string;
-  description?: string;
-  date: string;
-  author: string;
-  ㄴ;
-  sha: string;
-}
+import { CommitInfo } from "../types";
 
 export class GitlabCommitParser {
   private static readonly PATTERNS = {
@@ -17,26 +10,25 @@ export class GitlabCommitParser {
     sha: /<div class="label label-monospace[^>]*>([^<]+)<\/div>/,
   };
 
-  public parseCommits(jsonResponse: { html: string }): CommitInfo[] {
-    const commits: CommitInfo[] = [];
+  public static parseCommits(commits: { html: string }): CommitInfo[] {
+    const results: CommitInfo[] = [];
     let match;
 
     while (
-      (match = GitlabCommitParser.PATTERNS.commit.exec(jsonResponse.html)) !==
-      null
+      (match = GitlabCommitParser.PATTERNS.commit.exec(commits.html)) !== null
     ) {
       const commitHtml = match[0];
       const parsedCommit = this.parseCommitHtml(commitHtml);
 
       if (this.isValidCommit(parsedCommit)) {
-        commits.push(parsedCommit as CommitInfo);
+        results.push(parsedCommit as CommitInfo);
       }
     }
 
-    return commits;
+    return results;
   }
 
-  private parseCommitHtml(commitHtml: string): Partial<CommitInfo> {
+  private static parseCommitHtml(commitHtml: string): Partial<CommitInfo> {
     const message = GitlabCommitParser.PATTERNS.message
       .exec(commitHtml)?.[1]
       ?.trim();
@@ -51,7 +43,7 @@ export class GitlabCommitParser {
     return {
       message,
       description: description
-        ? this.decodeHtmlEntities(description.trim())
+        ? GitlabCommitParser.decodeHtmlEntities(description.trim())
         : undefined,
       date,
       author,
@@ -59,11 +51,11 @@ export class GitlabCommitParser {
     };
   }
 
-  private isValidCommit(commit: Partial<CommitInfo>): boolean {
+  private static isValidCommit(commit: Partial<CommitInfo>): boolean {
     return !!(commit.message && commit.date && commit.author && commit.sha);
   }
 
-  private decodeHtmlEntities(text: string): string {
+  private static decodeHtmlEntities(text: string): string {
     const entities: Record<string, string> = {
       "&#x000A;": "\n",
       "&quot;": '"',

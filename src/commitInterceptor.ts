@@ -5,10 +5,10 @@ import {
   MessageDispatcher,
   MessagePayload,
 } from "./services/MessageDispatcher.js";
-import { GitlabCommitParser } from "./services/GitlabCommitParser.js";
+import { GitlabCommitParser } from "./services/git/parser/GitlabCommitParser.js";
+import { getGitInfo } from "./services/git/utils.js";
 
 const debuggerService = new DebuggerService();
-const commitParser = new GitlabCommitParser();
 const commitInterceptorService = new CommitInterceptorService(
   new TaskExecutionController(),
   debuggerService
@@ -18,6 +18,7 @@ const commitInterceptorService = new CommitInterceptorService(
 chrome.runtime.onMessage.addListener(
   (message: MessagePayload, sender, sendResponse) => {
     if (message.action === "START_INTERCEPTOR_COMMIT") {
+      console.log("START_INTERCEPTOR_COMMIT");
       commitInterceptorService.initializeCommitInterceptor(sendResponse);
       return true;
     }
@@ -27,12 +28,17 @@ chrome.runtime.onMessage.addListener(
 // 네트워크 응답 처리
 chrome.debugger.onEvent.addListener((source, method, params) => {
   if (method === "Network.responseReceived") {
+    console.log("method", method);
     handleNetworkResponse(source, params);
   }
 });
 
 async function handleNetworkResponse(source, params) {
   if (!commitInterceptorService.isTaskExecutionActive()) return;
+
+  // FIXME 의존성 분리 필요(이유는 모르겠으나 에러도 안찍힘)
+  // const siteInfo = getGitInfo();
+  // const { parser } = siteInfo;
 
   // TODO : 디버깅용 true 플래그값 제거
   if (true || params.response.url.includes("commits.json")) {
@@ -45,7 +51,7 @@ async function handleNetworkResponse(source, params) {
       if (response?.body) {
         try {
           const jsonResponse = JSON.parse(response.body);
-          const commits = commitParser.parseCommits(jsonResponse);
+          const commits = GitlabCommitParser.parseCommits(jsonResponse);
 
           console.log("Original commits:", commits); // 디버깅용
 
