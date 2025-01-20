@@ -18,7 +18,6 @@ const commitInterceptorService = new CommitInterceptorService(
 chrome.runtime.onMessage.addListener(
   (message: MessagePayload, sender, sendResponse) => {
     if (message.action === "START_INTERCEPTOR_COMMIT") {
-      console.log("START_INTERCEPTOR_COMMIT");
       commitInterceptorService.initializeCommitInterceptor(sendResponse);
       return true;
     }
@@ -28,7 +27,6 @@ chrome.runtime.onMessage.addListener(
 // 네트워크 응답 처리
 chrome.debugger.onEvent.addListener((source, method, params) => {
   if (method === "Network.responseReceived") {
-    console.log("method", method);
     handleNetworkResponse(source, params);
   }
 });
@@ -52,16 +50,12 @@ async function handleNetworkResponse(source, params) {
         try {
           const jsonResponse = JSON.parse(response.body);
           const commits = GitlabCommitParser.parseCommits(jsonResponse);
-          console.log("Original commits:", commits);
-
-          const { formattedText, summaryText } =
-            CommitMessageFormatter.format(commits);
-
-          // TODO 추후 객체 데이터를 보내고, 내부 UI 구조와 클립보드 분리할것
-          const result = formattedText + "\n\n" + summaryText;
+          const { messages } = CommitMessageFormatter.format(commits);
 
           commitInterceptorService.detachDebugger(source.tabId);
-          MessageDispatcher.sendSuccess("COPY_TO_CLIPBOARD", result);
+          MessageDispatcher.sendSuccess("COPY_TO_CLIPBOARD", {
+            messages,
+          });
         } catch (error) {
           console.error("Parsing error:", error);
           MessageDispatcher.sendError(

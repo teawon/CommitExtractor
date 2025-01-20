@@ -5,16 +5,31 @@
     <title>Clipboard Test</title>
     <style>
       body {
-        width: 200px;
-        height: 100px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        width: 300px;
+        min-height: 150px;
+        padding: 15px;
+      }
+      #messageList {
+        margin: 10px 0;
+      }
+      .message-item {
+        margin: 5px 0;
+      }
+      #controls {
+        margin-top: 15px;
+      }
+      #status {
+        margin-top: 10px;
+        color: #666;
       }
     </style>
   </head>
   <body>
-    <button id="startButton">API 응답 캡처</button>
+    <div id="controls">
+      <button id="startButton">API 응답 캡처</button>
+      <button id="copyButton" disabled>선택항목 복사</button>
+    </div>
+    <div id="messageList"></div>
     <div id="status">대기중...</div>
     <script type="module" src="popup.js"></script>
   </body>

@@ -1,3 +1,4 @@
+import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter.js";
 import {
   MessageDispatcher,
   MessagePayload,
@@ -5,28 +6,67 @@ import {
 
 interface StatusElements {
   button: HTMLButtonElement;
+  copyButton: HTMLButtonElement;
   status: HTMLDivElement;
+  messageList: HTMLDivElement;
 }
 
 const getStatusElements = (): StatusElements | null => {
   const startButton = document.getElementById(
     "startButton"
   ) as HTMLButtonElement;
+  const copyButton = document.getElementById("copyButton") as HTMLButtonElement;
   const statusDiv = document.getElementById("status") as HTMLDivElement;
+  const messageList = document.getElementById("messageList") as HTMLDivElement;
 
-  if (!startButton || !statusDiv) {
+  if (!startButton || !statusDiv || !copyButton || !messageList) {
     console.error("필수 DOM 엘리먼트를 찾을 수 없습니다.");
     return null;
   }
 
-  return { button: startButton, status: statusDiv };
+  return {
+    button: startButton,
+    copyButton: copyButton,
+    status: statusDiv,
+    messageList: messageList,
+  };
 };
 
 const setupEventListeners = (elements: StatusElements): void => {
-  const { button } = elements;
+  const { button, copyButton, messageList, status } = elements;
 
   button.addEventListener("click", () => {
     handleStartInterceptorCommit(elements);
+  });
+
+  copyButton.addEventListener("click", () => {
+    const selectedMessages = Array.from(
+      messageList.querySelectorAll('input[type="checkbox"]:checked')
+    )
+      .map(
+        (checkbox) =>
+          (checkbox.nextElementSibling as HTMLLabelElement).textContent
+      )
+      .filter((text) => text !== null)
+      .join("\n");
+
+    if (selectedMessages) {
+      navigator.clipboard
+        .writeText(selectedMessages)
+        .then(() => {
+          elements.status.textContent = "선택된 메시지가 복사되었습니다!";
+        })
+        .catch((err) => {
+          console.error("클립보드 복사 실패:", err);
+          elements.status.textContent = "복사 실패!";
+        });
+    }
+  });
+
+  messageList.addEventListener("change", (e) => {
+    if (e.target instanceof HTMLInputElement && e.target.type === "checkbox") {
+      updateSummary(elements);
+    }
   });
 
   chrome.runtime.onMessage.addListener((message: MessagePayload) => {
@@ -72,27 +112,59 @@ const handleStartInterceptorCommit = async (
   }
 };
 
+const updateSummary = (elements: StatusElements): void => {
+  const { messageList, status } = elements;
+
+  const summary = CommitMessageFormatter.generateKeySummary(
+    Array.from(
+      messageList.querySelectorAll('input[type="checkbox"]:checked')
+    ).map((checkbox) => {
+      const label = checkbox.nextElementSibling as HTMLLabelElement;
+      const text = label.textContent || "";
+      const strongText = label.querySelector("strong")?.textContent || "";
+
+      return {
+        key: strongText,
+        text: strongText ? text.split(" : ")[1] : text,
+      };
+    })
+  );
+
+  status.textContent = summary;
+};
+
 const handleClipboardCopy = (
   message: MessagePayload,
   elements: StatusElements
 ): void => {
-  const { button, status } = elements;
+  const { button, copyButton, status, messageList } = elements;
 
   switch (message.action) {
     case "COPY_TO_CLIPBOARD":
-      if (message.data) {
-        navigator.clipboard
-          .writeText(message.data)
-          .then(() => {
-            status.textContent = "데이터가 복사되었습니다!";
-            button.disabled = false;
-          })
-          .catch((err) => {
-            console.error("클립보드 복사 실패:", err);
-            status.textContent = "복사 실패!";
-            button.disabled = false;
-          });
-      }
+      const data = message.data as {
+        messages: { key: string; text: string }[];
+      };
+
+      const messages = data?.messages ?? [];
+
+      messageList.innerHTML = "";
+      messages.forEach((msg, index) => {
+        const div = document.createElement("div");
+        div.className = "message-item";
+        const messageText = msg.key
+          ? `<strong>${msg.key}</strong> : ${msg.text}`
+          : `- ${msg.text}`;
+
+        div.innerHTML = `
+            <input type="checkbox" id="msg-${index}" checked>
+            <label for="msg-${index}">${messageText}</label>
+          `;
+        messageList.appendChild(div);
+      });
+
+      updateSummary(elements);
+      button.disabled = false;
+      copyButton.disabled = false;
       break;
 
     case "INTERCEPTOR_COMMIT_FAILED":

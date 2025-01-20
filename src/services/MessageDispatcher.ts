@@ -16,7 +16,7 @@ interface MessageResponse {
 interface SuccessPayload {
   type: "success";
   action: SuccessMessageType;
-  data?: string;
+  data?: unknown;
 }
 
 interface ErrorPayload {
@@ -31,7 +31,7 @@ export type MessagePayload = SuccessPayload | ErrorPayload;
  * Chrome 확장 프로그램의 메시지 통신을 처리
  */
 export class MessageDispatcher {
-  static sendSuccess(action: SuccessMessageType, data?: string) {
+  static sendSuccess(action: SuccessMessageType, data?: unknown) {
     return this.dispatch({
       type: "success",
       action,
