@@ -91,6 +91,33 @@
         word-break: break-word;
         line-height: 1.4;
       }
+
+      .toast {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 8px;
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+        z-index: 1000;
+      }
+
+      .toast.show {
+        opacity: 1;
+      }
+
+      .toast.success {
+        background-color: rgba(76, 175, 80, 0.9);
+      }
+
+      .toast.error {
+        background-color: rgba(244, 67, 54, 0.9);
+      }
     </style>
   </head>
   <body>
@@ -104,6 +131,7 @@
       <div id="messageList" class="message-list"></div>
       <div id="status" class="status">대기중...</div>
     </div>
+    <div id="toast" class="toast"></div>
     <script type="module" src="popup.js"></script>
   </body>
 </html>

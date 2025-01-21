@@ -9,6 +9,7 @@ interface StatusElements {
   copyButton: HTMLButtonElement;
   status: HTMLDivElement;
   messageList: HTMLDivElement;
+  toast: HTMLDivElement;
 }
 
 interface StoredData {
@@ -27,8 +28,9 @@ const getStatusElements = (): StatusElements | null => {
   const copyButton = document.getElementById("copyButton") as HTMLButtonElement;
   const statusDiv = document.getElementById("status") as HTMLDivElement;
   const messageList = document.getElementById("messageList") as HTMLDivElement;
+  const toast = document.getElementById("toast") as HTMLDivElement;
 
-  if (!startButton || !statusDiv || !copyButton || !messageList) {
+  if (!startButton || !statusDiv || !copyButton || !messageList || !toast) {
     console.error("필수 DOM 엘리먼트를 찾을 수 없습니다.");
     return null;
   }
@@ -38,6 +40,7 @@ const getStatusElements = (): StatusElements | null => {
     copyButton: copyButton,
     status: statusDiv,
     messageList: messageList,
+    toast: toast,
   };
 };
 
@@ -52,22 +55,29 @@ const setupEventListeners = (elements: StatusElements): void => {
     const selectedMessages = Array.from(
       messageList.querySelectorAll('input[type="checkbox"]:checked')
     )
-      .map(
-        (checkbox) =>
-          (checkbox.nextElementSibling as HTMLLabelElement).textContent
-      )
-      .filter((text) => text !== null)
+      .map((checkbox) => {
+        const label = checkbox.nextElementSibling as HTMLLabelElement;
+        const keyInput = label.querySelector(".key-input") as HTMLInputElement;
+        const messageText = label.querySelector(
+          ".message-text"
+        ) as HTMLSpanElement;
+
+        const key = keyInput.value.trim();
+        const text = messageText.textContent || "";
+
+        return key ? `- ${key} : ${text}` : `- ${text}`;
+      })
       .join("\n");
 
     if (selectedMessages) {
       navigator.clipboard
         .writeText(selectedMessages)
         .then(() => {
-          elements.status.textContent = "선택된 메시지가 복사되었습니다!";
+          showToast(elements, "선택된 메시지가 복사되었습니다!", "success");
         })
         .catch((err) => {
           console.error("클립보드 복사 실패:", err);
-          elements.status.textContent = "복사 실패!";
+          showToast(elements, "복사 실패!", "error");
         });
     }
   });
@@ -83,12 +93,25 @@ const setupEventListeners = (elements: StatusElements): void => {
   });
 };
 
+const showToast = (
+  elements: StatusElements,
+  message: string,
+  type: "success" | "error" = "success"
+) => {
+  const { toast } = elements;
+
+  toast.textContent = message;
+  toast.className = `toast ${type} show`;
+
+  setTimeout(() => {
+    toast.className = "toast";
+  }, 3000);
+};
+
 const handleStartInterceptorCommit = async (
   elements: StatusElements
 ): Promise<void> => {
   const { button, status } = elements;
-
-  status.textContent = "API 응답 대기중...";
   button.disabled = true;
 
   try {
@@ -109,14 +132,13 @@ const handleStartInterceptorCommit = async (
     );
 
     if (response.status === "success") {
-      status.textContent = "API 응답 감시 중...";
       return;
     }
-    status.textContent = "시작 실패!";
+    showToast(elements, "시작 실패!", "error");
     button.disabled = false;
   } catch (error) {
     console.error("Error:", error);
-    status.textContent = "오류가 발생했습니다!";
+    showToast(elements, "오류가 발생했습니다!", "error");
     button.disabled = false;
   }
 };
@@ -258,7 +280,6 @@ const handleClipboardCopy = (
 
     case "INTERCEPTOR_COMMIT_FAILED":
       console.error("모니터링 실패:", message.error);
-      status.textContent = `실패: ${message.error}`;
       button.disabled = false;
       break;
   }
