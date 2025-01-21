@@ -10,7 +10,8 @@
     "scripting",
     "clipboardWrite",
     "debugger",
-    "tabs"
+    "tabs",
+    "storage"
   ],
   "host_permissions": ["*"],
   "background": {

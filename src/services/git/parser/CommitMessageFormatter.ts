@@ -1,12 +1,12 @@
 import { CommitInfo } from "../types";
 
-interface ParsedCommit {
-  key: string;
-  message: string;
-}
-
 interface TicketSummary {
   [key: string]: string[];
+}
+
+interface FormattedMessage {
+  key: string;
+  text: string;
 }
 
 export class CommitMessageFormatter {
@@ -17,25 +17,34 @@ export class CommitMessageFormatter {
   }
 
   // TODO : 티켓 추출 로직 외부에서 핸들링 가능하도록 기능 추가
-  private static extractTicketInfo(commits: CommitInfo[]): ParsedCommit[] {
+  private static extractTicketInfo(commits: CommitInfo[]): FormattedMessage[] {
     return commits.map((commit) => {
       let key = "-";
+      let targetNumber: string | undefined;
+
       if (commit.description) {
         const ticketMatch = commit.description.match(/[A-Z]+[-_]\d+/);
         if (ticketMatch) {
           key = ticketMatch[0];
         }
+
+        // QA_숫자 형식 추출
+        const targetMatch = commit.description.match(/QA[-_]\d+/);
+        if (targetMatch) {
+          targetNumber = targetMatch[0];
+        }
       }
+
       return {
         key,
-        message: this.cleanMessage(commit.message),
+        text: this.cleanMessage(commit.message),
       };
     });
   }
 
-  private static generateTicketSummary(sortedCommits: ParsedCommit[]): string {
-    const ticketSummary = sortedCommits.reduce((acc, { key }) => {
-      if (key !== "-") {
+  public static generateKeySummary(commitList: FormattedMessage[]): string {
+    const ticketSummary = commitList.reduce((acc, { key }) => {
+      if (key) {
         const [ticketType, ticketNumber] = key.split(/[-_]/);
         if (!acc[ticketType]) {
           acc[ticketType] = [];
@@ -48,17 +57,20 @@ export class CommitMessageFormatter {
     return Object.entries(ticketSummary)
       .map(([type, numbers]) => {
         const sortedNumbers = numbers
+          .filter(Boolean)
           .map(Number)
           .sort((a, b) => a - b)
           .join(",");
-        return `${type}_${sortedNumbers}`;
+        if (type && sortedNumbers) {
+          return `${type}_${sortedNumbers}`;
+        }
+        return `- ${type || sortedNumbers}`;
       })
       .join(" / ");
   }
 
   public static format(commits: CommitInfo[]): {
-    formattedText: string;
-    summaryText: string;
+    messages: FormattedMessage[];
   } {
     const commitWithTickets = this.extractTicketInfo(commits);
     const sortedCommits = commitWithTickets.sort((a, b) => {
@@ -67,17 +79,21 @@ export class CommitMessageFormatter {
       return a.key.localeCompare(b.key);
     });
 
-    const formattedText = sortedCommits
-      .map(({ key, message }) => {
-        return key === "-" ? `- ${message}` : `- ${key} : ${message}`;
-      })
-      .join("\n");
-
-    const summaryText = this.generateTicketSummary(sortedCommits);
+    const messages = sortedCommits.map(({ key, text }) => {
+      if (key === "-") {
+        return {
+          key: "",
+          text,
+        };
+      }
+      return {
+        key,
+        text,
+      };
+    });
 
     return {
-      formattedText,
-      summaryText,
+      messages,
     };
   }
 }
