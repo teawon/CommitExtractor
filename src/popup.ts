@@ -11,6 +11,15 @@ interface StatusElements {
   messageList: HTMLDivElement;
 }
 
+interface StoredData {
+  messages: {
+    key: string;
+    text: string;
+    checked: boolean;
+  }[];
+  summary: string;
+}
+
 const getStatusElements = (): StatusElements | null => {
   const startButton = document.getElementById(
     "startButton"
@@ -133,6 +142,74 @@ const updateSummary = (elements: StatusElements): void => {
   );
 
   status.textContent = summary;
+  saveToStorage(elements);
+};
+
+const saveToStorage = async (elements: StatusElements): Promise<void> => {
+  const { messageList, status } = elements;
+
+  const messages = Array.from(
+    messageList.querySelectorAll(".message-item")
+  ).map((item) => {
+    const checkbox = item.querySelector(
+      'input[type="checkbox"]'
+    ) as HTMLInputElement;
+    const keyInput = item.querySelector(".key-input") as HTMLInputElement;
+    const messageText = item.querySelector(".message-text") as HTMLSpanElement;
+
+    return {
+      key: keyInput.value.trim(),
+      text: messageText.textContent || "",
+      checked: checkbox.checked,
+    };
+  });
+
+  await chrome.storage.local.set({
+    storedData: {
+      messages,
+      summary: status.textContent,
+    },
+  });
+};
+
+const loadFromStorage = async (elements: StatusElements): Promise<void> => {
+  const { messageList, status, copyButton } = elements;
+
+  const { storedData } = (await chrome.storage.local.get("storedData")) as {
+    storedData: StoredData;
+  };
+
+  if (storedData?.messages?.length) {
+    messageList.innerHTML = "";
+    storedData.messages.forEach((msg, index) => {
+      const div = document.createElement("div");
+      div.className = "message-item";
+
+      const messageHtml = `
+        <input type="checkbox" id="msg-${index}" ${
+        msg.checked ? "checked" : ""
+      }>
+        <label for="msg-${index}">
+          <input type="text" class="key-input" value="${
+            msg.key || ""
+          }" placeholder="키 입력">
+          <span class="message-text">${msg.text}</span>
+        </label>
+      `;
+
+      div.innerHTML = messageHtml;
+      messageList.appendChild(div);
+
+      const keyInput = div.querySelector(".key-input") as HTMLInputElement;
+      keyInput.addEventListener("input", () => {
+        updateSummary(elements);
+        saveToStorage(elements);
+      });
+    });
+
+    status.textContent = storedData.summary || "대기중...";
+    copyButton.disabled = false;
+  }
 };
 
 const handleClipboardCopy = (
@@ -170,6 +247,7 @@ const handleClipboardCopy = (
         const keyInput = div.querySelector(".key-input") as HTMLInputElement;
         keyInput.addEventListener("input", () => {
           updateSummary(elements);
+          saveToStorage(elements);
         });
       });
 
@@ -187,10 +265,11 @@ const handleClipboardCopy = (
 };
 
 (async function initializePopup() {
-  document.addEventListener("DOMContentLoaded", function () {
+  document.addEventListener("DOMContentLoaded", async function () {
     const elements = getStatusElements();
     if (!elements) return;
 
     setupEventListeners(elements);
+    await loadFromStorage(elements);
   });
 })();
