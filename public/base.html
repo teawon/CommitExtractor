@@ -87,7 +87,6 @@
         padding: 10px;
         background-color: #f5f5f5;
         border-radius: 4px;
-        margin-top: 15px;
         word-break: break-word;
         line-height: 1.4;
       }
@@ -118,6 +117,30 @@
       .toast.error {
         background-color: rgba(244, 67, 54, 0.9);
       }
+
+      .status-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .status {
+        flex: 1;
+        padding: 10px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+        word-break: break-word;
+        line-height: 1.4;
+      }
+
+      .status-checkbox input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
+      }
+
+      .status-checkbox {
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -129,7 +152,14 @@
         </button>
       </div>
       <div id="messageList" class="message-list"></div>
-      <div id="status" class="status">대기중...</div>
+      <div class="status-container">
+        <div class="status-wrapper">
+          <div class="status-checkbox">
+            <input type="checkbox" id="summaryCheckbox" checked />
+          </div>
+          <div id="status" class="status">-</div>
+        </div>
+      </div>
     </div>
     <div id="toast" class="toast"></div>
     <script type="module" src="popup.js"></script>

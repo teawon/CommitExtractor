@@ -10,6 +10,7 @@ interface StatusElements {
   status: HTMLDivElement;
   messageList: HTMLDivElement;
   toast: HTMLDivElement;
+  summaryCheckbox: HTMLInputElement;
 }
 
 interface StoredData {
@@ -19,6 +20,7 @@ interface StoredData {
     checked: boolean;
   }[];
   summary: string;
+  summaryChecked: boolean;
 }
 
 const getStatusElements = (): StatusElements | null => {
@@ -29,8 +31,18 @@ const getStatusElements = (): StatusElements | null => {
   const statusDiv = document.getElementById("status") as HTMLDivElement;
   const messageList = document.getElementById("messageList") as HTMLDivElement;
   const toast = document.getElementById("toast") as HTMLDivElement;
+  const summaryCheckbox = document.getElementById(
+    "summaryCheckbox"
+  ) as HTMLInputElement;
 
-  if (!startButton || !statusDiv || !copyButton || !messageList || !toast) {
+  if (
+    !startButton ||
+    !statusDiv ||
+    !copyButton ||
+    !messageList ||
+    !toast ||
+    !summaryCheckbox
+  ) {
     console.error("필수 DOM 엘리먼트를 찾을 수 없습니다.");
     return null;
   }
@@ -41,17 +53,28 @@ const getStatusElements = (): StatusElements | null => {
     status: statusDiv,
     messageList: messageList,
     toast: toast,
+    summaryCheckbox: summaryCheckbox,
   };
 };
 
 const setupEventListeners = (elements: StatusElements): void => {
-  const { button, copyButton, messageList, status } = elements;
+  const { button, copyButton, messageList, status, summaryCheckbox } = elements;
 
   button.addEventListener("click", () => {
     handleStartInterceptorCommit(elements);
   });
 
   copyButton.addEventListener("click", () => {
+    const { messageList, status, summaryCheckbox } = elements;
+
+    let copyText = "";
+
+    // 요약이 체크되어 있으면 먼저 추가
+    if (summaryCheckbox.checked && status.textContent) {
+      copyText += `${status.textContent}\n\n`;
+    }
+
+    // 선택된 메시지들 추가
     const selectedMessages = Array.from(
       messageList.querySelectorAll('input[type="checkbox"]:checked')
     )
@@ -69,9 +92,11 @@ const setupEventListeners = (elements: StatusElements): void => {
       })
       .join("\n");
 
-    if (selectedMessages) {
+    copyText += selectedMessages;
+
+    if (copyText) {
       navigator.clipboard
-        .writeText(selectedMessages)
+        .writeText(copyText)
         .then(() => {
           showToast(elements, "선택된 메시지가 복사되었습니다!", "success");
         })
@@ -143,6 +168,18 @@ const handleStartInterceptorCommit = async (
   }
 };
 
+const toggleSummaryCheckbox = (elements: StatusElements) => {
+  const { status, summaryCheckbox } = elements;
+  const parentElement = summaryCheckbox.closest(".status-checkbox");
+  if (parentElement instanceof HTMLElement) {
+    if (status.textContent && status.textContent !== "-") {
+      parentElement.style.display = "block";
+    } else {
+      parentElement.style.display = "none";
+    }
+  }
+};
+
 const updateSummary = (elements: StatusElements): void => {
   const { messageList, status } = elements;
 
@@ -163,12 +200,13 @@ const updateSummary = (elements: StatusElements): void => {
     })
   );
 
-  status.textContent = summary;
+  status.textContent = summary || "-";
+  toggleSummaryCheckbox(elements);
   saveToStorage(elements);
 };
 
 const saveToStorage = async (elements: StatusElements): Promise<void> => {
-  const { messageList, status } = elements;
+  const { messageList, status, summaryCheckbox } = elements;
 
   const messages = Array.from(
     messageList.querySelectorAll(".message-item")
@@ -190,12 +228,13 @@ const saveToStorage = async (elements: StatusElements): Promise<void> => {
     storedData: {
       messages,
       summary: status.textContent,
+      summaryChecked: summaryCheckbox.checked,
     },
   });
 };
 
 const loadFromStorage = async (elements: StatusElements): Promise<void> => {
-  const { messageList, status, copyButton } = elements;
+  const { messageList, status, copyButton, summaryCheckbox } = elements;
 
   const { storedData } = (await chrome.storage.local.get("storedData")) as {
     storedData: StoredData;
@@ -229,8 +268,14 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
       });
     });
 
-    status.textContent = storedData.summary || "대기중...";
+    status.textContent = storedData.summary || "-";
     copyButton.disabled = false;
+  }
+
+  toggleSummaryCheckbox(elements);
+
+  if (storedData?.summaryChecked !== undefined) {
+    summaryCheckbox.checked = storedData.summaryChecked;
   }
 };
 
