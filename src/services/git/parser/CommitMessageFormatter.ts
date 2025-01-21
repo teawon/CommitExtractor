@@ -57,10 +57,14 @@ export class CommitMessageFormatter {
     return Object.entries(ticketSummary)
       .map(([type, numbers]) => {
         const sortedNumbers = numbers
+          .filter(Boolean)
           .map(Number)
           .sort((a, b) => a - b)
           .join(",");
-        return `${type}_${sortedNumbers}`;
+        if (type && sortedNumbers) {
+          return `${type}_${sortedNumbers}`;
+        }
+        return `- ${type || sortedNumbers}`;
       })
       .join(" / ");
   }

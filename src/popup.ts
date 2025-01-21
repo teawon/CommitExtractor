@@ -120,12 +120,14 @@ const updateSummary = (elements: StatusElements): void => {
       messageList.querySelectorAll('input[type="checkbox"]:checked')
     ).map((checkbox) => {
       const label = checkbox.nextElementSibling as HTMLLabelElement;
-      const text = label.textContent || "";
-      const strongText = label.querySelector("strong")?.textContent || "";
+      const keyInput = label.querySelector(".key-input") as HTMLInputElement;
+      const messageText = label.querySelector(
+        ".message-text"
+      ) as HTMLSpanElement;
 
       return {
-        key: strongText,
-        text: strongText ? text.split(" : ")[1] : text,
+        key: keyInput.value.trim(),
+        text: messageText.textContent || "",
       };
     })
   );
@@ -151,15 +153,24 @@ const handleClipboardCopy = (
       messages.forEach((msg, index) => {
         const div = document.createElement("div");
         div.className = "message-item";
-        const messageText = msg.key
-          ? `<strong>${msg.key}</strong> : ${msg.text}`
-          : `- ${msg.text}`;
 
-        div.innerHTML = `
-            <input type="checkbox" id="msg-${index}" checked>
-            <label for="msg-${index}">${messageText}</label>
-          `;
+        const messageHtml = `
+          <input type="checkbox" id="msg-${index}" checked>
+          <label for="msg-${index}">
+            <input type="text" class="key-input" value="${
+              msg.key || ""
+            }" placeholder="키 입력">
+            <span class="message-text">${msg.text}</span>
+          </label>
+        `;
+
+        div.innerHTML = messageHtml;
         messageList.appendChild(div);
+
+        const keyInput = div.querySelector(".key-input") as HTMLInputElement;
+        keyInput.addEventListener("input", () => {
+          updateSummary(elements);
+        });
       });
 
       updateSummary(elements);
