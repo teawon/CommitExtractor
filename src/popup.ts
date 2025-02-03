@@ -116,6 +116,47 @@ const setupEventListeners = (elements: StatusElements): void => {
   chrome.runtime.onMessage.addListener((message: MessagePayload) => {
     handleClipboardCopy(message, elements);
   });
+
+  // 드래그 앤 드롭 이벤트 리스너 추가
+  messageList.addEventListener("dragstart", (e) => {
+    if (e.target instanceof HTMLElement && e.target.closest(".message-item")) {
+      const item = e.target.closest(".message-item");
+      item?.classList.add("dragging");
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+      }
+    }
+  });
+
+  messageList.addEventListener("dragend", (e) => {
+    if (e.target instanceof HTMLElement && e.target.closest(".message-item")) {
+      const item = e.target.closest(".message-item");
+      item?.classList.remove("dragging");
+      updateSummary(elements);
+      saveToStorage(elements);
+    }
+  });
+
+  messageList.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const draggingItem = messageList.querySelector(".dragging");
+    if (!draggingItem) return;
+
+    const siblings = Array.from(
+      messageList.querySelectorAll(".message-item:not(.dragging)")
+    );
+    const nextSibling = siblings.find((sibling) => {
+      const rect = sibling.getBoundingClientRect();
+      const offset = rect.y + rect.height / 2 - e.clientY;
+      return offset > 0;
+    });
+
+    if (nextSibling) {
+      messageList.insertBefore(draggingItem, nextSibling);
+    } else {
+      messageList.appendChild(draggingItem);
+    }
+  });
 };
 
 const showToast = (
@@ -126,7 +167,7 @@ const showToast = (
   const { toast } = elements;
 
   toast.textContent = message;
-  toast.className = `toast ${type} show`;
+  toast.className = `toas1t ${type} show`;
 
   setTimeout(() => {
     toast.className = "toast";
@@ -233,6 +274,28 @@ const saveToStorage = async (elements: StatusElements): Promise<void> => {
   });
 };
 
+const createMessageItem = (
+  msg: { key: string; text: string; checked: boolean },
+  index: number
+): HTMLElement => {
+  const div = document.createElement("div");
+  div.className = "message-item";
+  div.draggable = true; // 드래그 가능하도록 설정
+
+  const messageHtml = `
+    <input type="checkbox" id="msg-${index}" ${msg.checked ? "checked" : ""}>
+    <label for="msg-${index}">
+      <input type="text" class="key-input" value="${
+        msg.key || ""
+      }" placeholder="키 입력">
+      <span class="message-text">${msg.text}</span>
+    </label>
+  `;
+
+  div.innerHTML = messageHtml;
+  return div;
+};
+
 const loadFromStorage = async (elements: StatusElements): Promise<void> => {
   const { messageList, status, copyButton, summaryCheckbox } = elements;
 
@@ -243,22 +306,7 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
   if (storedData?.messages?.length) {
     messageList.innerHTML = "";
     storedData.messages.forEach((msg, index) => {
-      const div = document.createElement("div");
-      div.className = "message-item";
-
-      const messageHtml = `
-        <input type="checkbox" id="msg-${index}" ${
-        msg.checked ? "checked" : ""
-      }>
-        <label for="msg-${index}">
-          <input type="text" class="key-input" value="${
-            msg.key || ""
-          }" placeholder="키 입력">
-          <span class="message-text">${msg.text}</span>
-        </label>
-      `;
-
-      div.innerHTML = messageHtml;
+      const div = createMessageItem(msg, index);
       messageList.appendChild(div);
 
       const keyInput = div.querySelector(".key-input") as HTMLInputElement;
@@ -295,20 +343,7 @@ const handleClipboardCopy = (
 
       messageList.innerHTML = "";
       messages.forEach((msg, index) => {
-        const div = document.createElement("div");
-        div.className = "message-item";
-
-        const messageHtml = `
-          <input type="checkbox" id="msg-${index}" checked>
-          <label for="msg-${index}">
-            <input type="text" class="key-input" value="${
-              msg.key || ""
-            }" placeholder="키 입력">
-            <span class="message-text">${msg.text}</span>
-          </label>
-        `;
-
-        div.innerHTML = messageHtml;
+        const div = createMessageItem({ ...msg, checked: true }, index);
         messageList.appendChild(div);
 
         const keyInput = div.querySelector(".key-input") as HTMLInputElement;
