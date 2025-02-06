@@ -5,8 +5,66 @@
     <title>Clipboard Test</title>
     <style>
       .container {
-        min-width: 500px;
+        min-width: 600px;
         padding: 20px;
+        display: flex;
+        gap: 20px;
+      }
+
+      .editor-section {
+        flex: 3;
+        min-width: 400px;
+      }
+
+      .preview-section {
+        flex: 1;
+        min-width: 300px;
+        border-left: 1px solid #e9ecef;
+        padding-left: 20px;
+      }
+
+      .preview-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .preview-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #495057;
+      }
+
+      .copy-icon-button {
+        background: none;
+        border: none;
+        padding: 8px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+
+      .copy-icon-button:hover {
+        background-color: #e7f5ff;
+      }
+
+      .copy-icon-button svg {
+        width: 16px;
+        height: 16px;
+        fill: #339af0;
+      }
+
+      .preview-content {
+        padding: 12px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #495057;
+        min-height: 100px;
       }
 
       .button-container {
@@ -152,7 +210,7 @@
       }
 
       .toast.success {
-        background-color: rgba(76, 175, 80, 0.9);
+        background-color: rgba(103, 195, 218, 0.9);
       }
 
       .toast.error {
@@ -186,19 +244,40 @@
   </head>
   <body>
     <div class="container">
-      <div class="button-container">
-        <button id="startButton" class="button">API 응답 캡처</button>
-        <button id="copyButton" class="button copy-button" disabled>
-          선택항목 복사
-        </button>
-      </div>
-      <div id="messageList" class="message-list"></div>
-      <div class="status-container">
-        <div class="status-wrapper">
-          <div class="status-checkbox">
-            <input type="checkbox" id="summaryCheckbox" checked />
+      <div class="editor-section">
+        <div class="button-container">
+          <button id="startButton" class="button">
+            Commit 메세지 불러오기
+          </button>
+        </div>
+        <div id="messageList" class="message-list"></div>
+        <div class="status-container">
+          <div class="status-wrapper">
+            <div class="status-checkbox">
+              <input type="checkbox" id="summaryCheckbox" checked />
+            </div>
+            <div id="status" class="status">-</div>
           </div>
-          <div id="status" class="status">-</div>
+        </div>
+      </div>
+      <div class="preview-section">
+        <div class="preview-header">
+          <span class="preview-title">복사 미리보기</span>
+          <button
+            id="copyButton"
+            class="copy-icon-button"
+            disabled
+            title="클립보드에 복사"
+          >
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z"
+              />
+            </svg>
+          </button>
+        </div>
+        <div id="previewContent" class="preview-content">
+          복사할 메세지를 선택해 주세요
         </div>
       </div>
     </div>

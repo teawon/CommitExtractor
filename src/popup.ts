@@ -11,6 +11,7 @@ interface StatusElements {
   messageList: HTMLDivElement;
   toast: HTMLDivElement;
   summaryCheckbox: HTMLInputElement;
+  previewContent: HTMLDivElement;
 }
 
 interface StoredData {
@@ -34,6 +35,9 @@ const getStatusElements = (): StatusElements | null => {
   const summaryCheckbox = document.getElementById(
     "summaryCheckbox"
   ) as HTMLInputElement;
+  const previewContent = document.getElementById(
+    "previewContent"
+  ) as HTMLDivElement;
 
   if (
     !startButton ||
@@ -41,7 +45,8 @@ const getStatusElements = (): StatusElements | null => {
     !copyButton ||
     !messageList ||
     !toast ||
-    !summaryCheckbox
+    !summaryCheckbox ||
+    !previewContent
   ) {
     console.error("필수 DOM 엘리먼트를 찾을 수 없습니다.");
     return null;
@@ -54,51 +59,32 @@ const getStatusElements = (): StatusElements | null => {
     messageList: messageList,
     toast: toast,
     summaryCheckbox: summaryCheckbox,
+    previewContent,
   };
 };
 
 const setupEventListeners = (elements: StatusElements): void => {
-  const { button, copyButton, messageList, status, summaryCheckbox } = elements;
+  const {
+    button,
+    copyButton,
+    messageList,
+    status,
+    summaryCheckbox,
+    previewContent,
+  } = elements;
 
   button.addEventListener("click", () => {
     handleStartInterceptorCommit(elements);
   });
 
   copyButton.addEventListener("click", () => {
-    const { messageList, status, summaryCheckbox } = elements;
+    const textToCopy = previewContent.textContent;
 
-    let copyText = "";
-
-    // 요약이 체크되어 있으면 먼저 추가
-    if (summaryCheckbox.checked && status.textContent) {
-      copyText += `${status.textContent}\n\n`;
-    }
-
-    // 선택된 메시지들 추가
-    const selectedMessages = Array.from(
-      messageList.querySelectorAll('input[type="checkbox"]:checked')
-    )
-      .map((checkbox) => {
-        const label = checkbox.nextElementSibling as HTMLLabelElement;
-        const keyInput = label.querySelector(".key-input") as HTMLInputElement;
-        const messageText = label.querySelector(
-          ".message-text"
-        ) as HTMLSpanElement;
-
-        const key = keyInput.value.trim();
-        const text = messageText.textContent || "";
-
-        return key ? `- ${key} : ${text}` : `- ${text}`;
-      })
-      .join("\n");
-
-    copyText += selectedMessages;
-
-    if (copyText) {
+    if (textToCopy && textToCopy !== "선택된 항목이 여기에 표시됩니다") {
       navigator.clipboard
-        .writeText(copyText)
+        .writeText(textToCopy)
         .then(() => {
-          showToast(elements, "선택된 메시지가 복사되었습니다!", "success");
+          showToast(elements, "복사되었습니다.", "success");
         })
         .catch((err) => {
           console.error("클립보드 복사 실패:", err);
@@ -110,7 +96,14 @@ const setupEventListeners = (elements: StatusElements): void => {
   messageList.addEventListener("change", (e) => {
     if (e.target instanceof HTMLInputElement && e.target.type === "checkbox") {
       updateSummary(elements);
+      updatePreview(elements);
+      saveToStorage(elements);
     }
+  });
+
+  summaryCheckbox.addEventListener("change", () => {
+    updatePreview(elements);
+    saveToStorage(elements);
   });
 
   chrome.runtime.onMessage.addListener((message: MessagePayload) => {
@@ -146,6 +139,7 @@ const setupEventListeners = (elements: StatusElements): void => {
       });
 
       updateSummary(elements);
+      updatePreview(elements);
       saveToStorage(elements);
     }
   });
@@ -188,7 +182,7 @@ const showToast = (
   const { toast } = elements;
 
   toast.textContent = message;
-  toast.className = `toas1t ${type} show`;
+  toast.className = `toast ${type} show`;
 
   setTimeout(() => {
     toast.className = "toast";
@@ -267,6 +261,42 @@ const updateSummary = (elements: StatusElements): void => {
   saveToStorage(elements);
 };
 
+const updatePreview = (elements: StatusElements): void => {
+  const { messageList, status, summaryCheckbox, previewContent } = elements;
+  let previewText = "";
+
+  // 요약이 체크되어 있으면 먼저 추가
+  if (summaryCheckbox.checked && status.textContent) {
+    previewText += `${status.textContent}\n\n`;
+  }
+
+  // 선택된 메시지들 추가
+  const selectedMessages = Array.from(
+    messageList.querySelectorAll('input[type="checkbox"]:checked')
+  )
+    .map((checkbox) => {
+      const label = checkbox.nextElementSibling as HTMLLabelElement;
+      const keyInput = label.querySelector(".key-input") as HTMLInputElement;
+      const messageText = label.querySelector(
+        ".message-text"
+      ) as HTMLSpanElement;
+
+      const key = keyInput.value.trim();
+      const text = messageText.textContent || "";
+
+      return key ? `- ${key} : ${text}` : `- ${text}`;
+    })
+    .join("\n");
+
+  previewText += selectedMessages;
+
+  if (!previewText.trim()) {
+    previewText = "선택된 항목이 여기에 표시됩니다";
+  }
+
+  previewContent.textContent = previewText;
+};
+
 const saveToStorage = async (elements: StatusElements): Promise<void> => {
   const { messageList, status, summaryCheckbox } = elements;
 
@@ -333,6 +363,7 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
       const keyInput = div.querySelector(".key-input") as HTMLInputElement;
       keyInput.addEventListener("input", () => {
         updateSummary(elements);
+        updatePreview(elements);
         saveToStorage(elements);
       });
     });
@@ -346,6 +377,8 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
   if (storedData?.summaryChecked !== undefined) {
     summaryCheckbox.checked = storedData.summaryChecked;
   }
+
+  updatePreview(elements);
 };
 
 const handleClipboardCopy = (
@@ -370,11 +403,13 @@ const handleClipboardCopy = (
         const keyInput = div.querySelector(".key-input") as HTMLInputElement;
         keyInput.addEventListener("input", () => {
           updateSummary(elements);
+          updatePreview(elements);
           saveToStorage(elements);
         });
       });
 
       updateSummary(elements);
+      updatePreview(elements);
       button.disabled = false;
       copyButton.disabled = false;
       break;
