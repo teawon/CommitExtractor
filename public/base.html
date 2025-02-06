@@ -44,23 +44,57 @@
       }
 
       .message-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
         max-height: 400px;
         overflow-y: auto;
         margin-bottom: 15px;
+        padding: 4px;
       }
 
       .message-item {
         display: flex;
         align-items: flex-start;
-        padding: 8px 0;
+        padding: 8px 12px;
         gap: 8px;
-        cursor: move;
+        cursor: grab;
         background-color: white;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      .message-item:hover {
+        background-color: #f8f9fa;
+        border-color: #e9ecef;
+      }
+
+      .message-item:before {
+        content: "⋮";
+        color: #adb5bd;
+        margin-right: 4px;
+        cursor: grab;
+        font-size: 14px;
+      }
+
+      .message-item:active {
+        cursor: grabbing;
       }
 
       .message-item.dragging {
-        opacity: 0.5;
-        background-color: #f8f9fa;
+        opacity: 0.9;
+        background-color: #e7f5ff;
+        border: 1px dashed #339af0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        position: relative;
+        z-index: 100;
+      }
+
+      .message-item.drag-over {
+        border-bottom: 2px solid #339af0;
+        margin-bottom: -2px;
       }
 
       .message-item label {

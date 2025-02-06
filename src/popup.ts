@@ -125,6 +125,12 @@ const setupEventListeners = (elements: StatusElements): void => {
       if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = "move";
       }
+
+      // 드래그 시작 시 다른 아이템들의 시각적 피드백을 위한 클래스 추가
+      const items = messageList.querySelectorAll(
+        ".message-item:not(.dragging)"
+      );
+      items.forEach((item) => item.classList.add("can-drop"));
     }
   });
 
@@ -132,6 +138,13 @@ const setupEventListeners = (elements: StatusElements): void => {
     if (e.target instanceof HTMLElement && e.target.closest(".message-item")) {
       const item = e.target.closest(".message-item");
       item?.classList.remove("dragging");
+
+      // 드래그 종료 시 모든 시각적 피드백 클래스 제거
+      const items = messageList.querySelectorAll(".message-item");
+      items.forEach((item) => {
+        item.classList.remove("can-drop", "drag-over");
+      });
+
       updateSummary(elements);
       saveToStorage(elements);
     }
@@ -142,18 +155,26 @@ const setupEventListeners = (elements: StatusElements): void => {
     const draggingItem = messageList.querySelector(".dragging");
     if (!draggingItem) return;
 
+    // 이전 drag-over 클래스 제거
+    const prevDragOver = messageList.querySelector(".drag-over");
+    prevDragOver?.classList.remove("drag-over");
+
     const siblings = Array.from(
       messageList.querySelectorAll(".message-item:not(.dragging)")
     );
     const nextSibling = siblings.find((sibling) => {
       const rect = sibling.getBoundingClientRect();
-      const offset = rect.y + rect.height / 2 - e.clientY;
-      return offset > 0;
+      return e.clientY < rect.top + rect.height / 2;
     });
 
     if (nextSibling) {
+      nextSibling.classList.add("drag-over");
       messageList.insertBefore(draggingItem, nextSibling);
     } else {
+      const lastSibling = siblings[siblings.length - 1];
+      if (lastSibling) {
+        lastSibling.classList.add("drag-over");
+      }
       messageList.appendChild(draggingItem);
     }
   });
