@@ -16,7 +16,7 @@ export const GIT_SERVICE_INFO: {
   [key in GitServiceKey]: { domain: string; apiEndpoint: string };
 } = {
   gitlab: {
-    domain: "*",
+    domain: "",
     apiEndpoint: "*",
   },
   //   github: {

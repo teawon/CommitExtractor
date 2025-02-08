@@ -67,12 +67,6 @@
         min-height: 100px;
       }
 
-      .button-container {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 15px;
-      }
-
       .button {
         padding: 8px 16px;
         border: none;
@@ -82,6 +76,9 @@
         cursor: pointer;
         font-size: 14px;
         transition: background-color 0.3s;
+        line-height: 1.4;
+        width: 100%;
+        text-align: center;
       }
 
       .button:hover {
@@ -89,8 +86,14 @@
       }
 
       .button:disabled {
-        background-color: #cccccc;
+        background-color: #e9ecef;
+        border-color: #dee2e6;
+        color: #adb5bd;
         cursor: not-allowed;
+      }
+
+      .button:disabled:hover {
+        background-color: #e9ecef;
       }
 
       .copy-button {
@@ -239,6 +242,19 @@
 
       .status-checkbox {
         display: block;
+      }
+
+      .error-text {
+        color: #dc3545;
+        font-weight: 500;
+      }
+
+      .button-container {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 15px;
+        width: 100%;
       }
     </style>
   </head>

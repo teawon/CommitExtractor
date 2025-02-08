@@ -1,4 +1,5 @@
 import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter.js";
+import { GIT_SERVICE_INFO } from "./services/git/types.js";
 import {
   MessageDispatcher,
   MessagePayload,
@@ -64,13 +65,20 @@ const getStatusElements = (): StatusElements | null => {
 };
 
 const setupEventListeners = (elements: StatusElements): void => {
+  const { button, previewContent } = elements;
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const currentUrl = tabs[0]?.url || "";
+    const isValidPath = currentUrl.includes(GIT_SERVICE_INFO.gitlab.domain);
+
+    updateUIForValidPath(elements, isValidPath);
+  });
+
   const {
-    button,
     copyButton,
-    messageList,
+    messageList: messageListFromElements,
     status,
     summaryCheckbox,
-    previewContent,
   } = elements;
 
   button.addEventListener("click", () => {
@@ -93,7 +101,7 @@ const setupEventListeners = (elements: StatusElements): void => {
     }
   });
 
-  messageList.addEventListener("change", (e) => {
+  messageListFromElements.addEventListener("change", (e) => {
     if (e.target instanceof HTMLInputElement && e.target.type === "checkbox") {
       updateSummary(elements);
       updatePreview(elements);
@@ -111,7 +119,7 @@ const setupEventListeners = (elements: StatusElements): void => {
   });
 
   // 드래그 앤 드롭 이벤트 리스너 추가
-  messageList.addEventListener("dragstart", (e) => {
+  messageListFromElements.addEventListener("dragstart", (e) => {
     if (e.target instanceof HTMLElement && e.target.closest(".message-item")) {
       const item = e.target.closest(".message-item");
       item?.classList.add("dragging");
@@ -120,20 +128,20 @@ const setupEventListeners = (elements: StatusElements): void => {
       }
 
       // 드래그 시작 시 다른 아이템들의 시각적 피드백을 위한 클래스 추가
-      const items = messageList.querySelectorAll(
+      const items = messageListFromElements.querySelectorAll(
         ".message-item:not(.dragging)"
       );
       items.forEach((item) => item.classList.add("can-drop"));
     }
   });
 
-  messageList.addEventListener("dragend", (e) => {
+  messageListFromElements.addEventListener("dragend", (e) => {
     if (e.target instanceof HTMLElement && e.target.closest(".message-item")) {
       const item = e.target.closest(".message-item");
       item?.classList.remove("dragging");
 
       // 드래그 종료 시 모든 시각적 피드백 클래스 제거
-      const items = messageList.querySelectorAll(".message-item");
+      const items = messageListFromElements.querySelectorAll(".message-item");
       items.forEach((item) => {
         item.classList.remove("can-drop", "drag-over");
       });
@@ -144,17 +152,17 @@ const setupEventListeners = (elements: StatusElements): void => {
     }
   });
 
-  messageList.addEventListener("dragover", (e) => {
+  messageListFromElements.addEventListener("dragover", (e) => {
     e.preventDefault();
-    const draggingItem = messageList.querySelector(".dragging");
+    const draggingItem = messageListFromElements.querySelector(".dragging");
     if (!draggingItem) return;
 
     // 이전 drag-over 클래스 제거
-    const prevDragOver = messageList.querySelector(".drag-over");
+    const prevDragOver = messageListFromElements.querySelector(".drag-over");
     prevDragOver?.classList.remove("drag-over");
 
     const siblings = Array.from(
-      messageList.querySelectorAll(".message-item:not(.dragging)")
+      messageListFromElements.querySelectorAll(".message-item:not(.dragging)")
     );
     const nextSibling = siblings.find((sibling) => {
       const rect = sibling.getBoundingClientRect();
@@ -163,15 +171,36 @@ const setupEventListeners = (elements: StatusElements): void => {
 
     if (nextSibling) {
       nextSibling.classList.add("drag-over");
-      messageList.insertBefore(draggingItem, nextSibling);
+      messageListFromElements.insertBefore(draggingItem, nextSibling);
     } else {
       const lastSibling = siblings[siblings.length - 1];
       if (lastSibling) {
         lastSibling.classList.add("drag-over");
       }
-      messageList.appendChild(draggingItem);
+      messageListFromElements.appendChild(draggingItem);
     }
   });
+};
+
+const updateUIForValidPath = (
+  elements: StatusElements,
+  isValid: boolean
+): void => {
+  const { button, previewContent } = elements;
+
+  if (!isValid) {
+    button.disabled = true;
+    button.innerHTML = `Commit 메세지 불러오기<br><span class="error-text" style="font-size: 12px;">유효한 페이지에서 사용 가능합니다.<br>${GIT_SERVICE_INFO.gitlab.domain}</span>`;
+    previewContent.textContent = "Merge Request 페이지에서 실행해주세요";
+  } else {
+    button.disabled = false;
+    button.textContent = "Commit 메세지 불러오기";
+    if (
+      previewContent.textContent === "Merge Request 페이지에서 실행해주세요"
+    ) {
+      previewContent.textContent = "선택된 항목이 여기에 표시됩니다";
+    }
+  }
 };
 
 const showToast = (
@@ -201,12 +230,11 @@ const handleStartInterceptorCommit = async (
       currentWindow: true,
     });
 
-    // TODO : 페이지 검증 필요성 확인 필요
-    // if (!tab?.url?.includes("merge_requests")) {
-    //   status.textContent = "올바른 페이지가 아닙니다!";
-    //   button.disabled = false;
-    //   return;
-    // }
+    if (!tab?.url?.includes("merge_requests")) {
+      status.textContent = "올바른 페이지가 아닙니다!";
+      button.disabled = false;
+      return;
+    }
 
     const response = await MessageDispatcher.sendSuccess(
       "START_INTERCEPTOR_COMMIT"
