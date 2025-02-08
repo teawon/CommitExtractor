@@ -18,22 +18,26 @@ export class CommitMessageFormatter {
 
   // TODO : 티켓 추출 로직 외부에서 핸들링 가능하도록 기능 추가
   private static extractTicketInfo(commits: CommitInfo[]): FormattedMessage[] {
-    return commits.map((commit) => {
-      let key = "-";
-      let targetNumber: string | undefined;
-
+    const getTicketKey = (commit: CommitInfo) => {
       if (commit.description) {
-        const ticketMatch = commit.description.match(/[A-Z]+[-_]\d+/);
+        const ticketMatch = commit.description.match(/[A-z]+[-_]\d+/);
         if (ticketMatch) {
-          key = ticketMatch[0];
-        }
-
-        // QA_숫자 형식 추출
-        const targetMatch = commit.description.match(/QA[-_]\d+/);
-        if (targetMatch) {
-          targetNumber = targetMatch[0];
+          return ticketMatch[0];
         }
       }
+
+      if (commit.message) {
+        const ticketMatch = commit.message.match(/[A-z]+[-_]\d+/);
+        if (ticketMatch) {
+          return ticketMatch[0];
+        }
+      }
+
+      return "-";
+    };
+
+    return commits.map((commit) => {
+      const key = getTicketKey(commit);
 
       return {
         key,
