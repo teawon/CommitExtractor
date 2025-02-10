@@ -39,10 +39,7 @@ async function handleNetworkResponse(source, params) {
   // const siteInfo = getGitInfo();
   // const { parser } = siteInfo;
 
-  if (
-    true ||
-    params.response.url.includes(GIT_SERVICE_INFO.gitlab.apiEndpoint)
-  ) {
+  if (params.response.url.includes(GIT_SERVICE_INFO.gitlab.apiEndpoint)) {
     try {
       const response = await debuggerService.getResponseBody(
         source.tabId,

@@ -29,8 +29,6 @@ export class CommitMessageFormatter {
 
   public static setTicketRegex(pattern: string): void {
     try {
-      const cleanPattern = pattern.replace(/^\/|\/$/g, "");
-      const regex = new RegExp(cleanPattern);
       chrome.storage.local.set({ ticketRegex: pattern });
     } catch (error) {
       console.error("Invalid regex pattern:", error);
@@ -59,6 +57,8 @@ export class CommitMessageFormatter {
       }
       return "-";
     };
+
+    console.log(commits);
 
     return commits.map((commit) => ({
       key: getTicketKey(commit),
@@ -97,6 +97,7 @@ export class CommitMessageFormatter {
     commits: CommitInfo[]
   ): Promise<{ messages: FormattedMessage[] }> {
     const commitWithTickets = await this.extractTicketInfo(commits);
+    console.log(commitWithTickets);
     const sortedCommits = commitWithTickets.sort((a, b) => {
       if (a.key === "-") return 1;
       if (b.key === "-") return -1;

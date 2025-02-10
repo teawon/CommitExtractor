@@ -4,7 +4,7 @@
   "version": "1.0",
   "description": "CommitCrawler",
   "permissions": ["debugger", "tabs", "storage"],
-  "host_permissions": ["https://*.gabia.io/*", "https://*.gabia.com/*"],
+  "host_permissions": ["*", "https://*.gabia.io/*", "https://*.gabia.com/*"],
   "background": {
     "service_worker": "commitInterceptor.js",
     "type": "module"
