@@ -10,40 +10,60 @@ interface FormattedMessage {
 }
 
 export class CommitMessageFormatter {
+  private static DEFAULT_TICKET_REGEX = /[A-z]+[-_]\d+/;
+
+  private static async getCurrentRegex(): Promise<RegExp> {
+    const { ticketRegex } = (await chrome.storage.local.get("ticketRegex")) as {
+      ticketRegex: string;
+    };
+    if (ticketRegex) {
+      try {
+        const pattern = ticketRegex.replace(/^\/|\/$/g, "");
+        return new RegExp(pattern);
+      } catch (error) {
+        console.error("Invalid stored regex:", error);
+      }
+    }
+    return this.DEFAULT_TICKET_REGEX;
+  }
+
+  public static setTicketRegex(pattern: string): void {
+    try {
+      chrome.storage.local.set({ ticketRegex: pattern });
+    } catch (error) {
+      console.error("Invalid regex pattern:", error);
+    }
+  }
+
   private static cleanMessage(message: string): string {
     return message
-      .replace(/^(feat|fix|refactor|chore|docs|style|test|perf):\s*/i, "")
+      .replace(/^(feat|fix|refactor|chore|docs|style|test|perf)\s*:\s*/i, "")
       .trim();
   }
 
-  // TODO : 티켓 추출 로직 외부에서 핸들링 가능하도록 기능 추가
-  private static extractTicketInfo(commits: CommitInfo[]): FormattedMessage[] {
+  private static async extractTicketInfo(
+    commits: CommitInfo[]
+  ): Promise<FormattedMessage[]> {
+    const regex = await this.getCurrentRegex();
+
     const getTicketKey = (commit: CommitInfo) => {
       if (commit.description) {
-        const ticketMatch = commit.description.match(/[A-z]+[-_]\d+/);
-        if (ticketMatch) {
-          return ticketMatch[0];
-        }
+        const ticketMatch = commit.description.match(regex);
+        if (ticketMatch) return ticketMatch[0];
       }
-
       if (commit.message) {
-        const ticketMatch = commit.message.match(/[A-z]+[-_]\d+/);
-        if (ticketMatch) {
-          return ticketMatch[0];
-        }
+        const ticketMatch = commit.message.match(regex);
+        if (ticketMatch) return ticketMatch[0];
       }
-
       return "-";
     };
 
-    return commits.map((commit) => {
-      const key = getTicketKey(commit);
+    console.log(commits);
 
-      return {
-        key,
-        text: this.cleanMessage(commit.message),
-      };
-    });
+    return commits.map((commit) => ({
+      key: getTicketKey(commit),
+      text: this.cleanMessage(commit.message),
+    }));
   }
 
   public static generateKeySummary(commitList: FormattedMessage[]): string {
@@ -73,10 +93,11 @@ export class CommitMessageFormatter {
       .join(" / ");
   }
 
-  public static format(commits: CommitInfo[]): {
-    messages: FormattedMessage[];
-  } {
-    const commitWithTickets = this.extractTicketInfo(commits);
+  public static async format(
+    commits: CommitInfo[]
+  ): Promise<{ messages: FormattedMessage[] }> {
+    const commitWithTickets = await this.extractTicketInfo(commits);
+    console.log(commitWithTickets);
     const sortedCommits = commitWithTickets.sort((a, b) => {
       if (a.key === "-") return 1;
       if (b.key === "-") return -1;

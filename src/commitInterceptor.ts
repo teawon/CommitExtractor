@@ -7,6 +7,7 @@ import {
 } from "./services/MessageDispatcher.js";
 import { GitlabCommitParser } from "./services/git/parser/GitlabCommitParser.js";
 import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter.js";
+import { GIT_SERVICE_INFO } from "./services/git/types.js";
 
 const debuggerService = new DebuggerService();
 const commitInterceptorService = new CommitInterceptorService(
@@ -38,8 +39,7 @@ async function handleNetworkResponse(source, params) {
   // const siteInfo = getGitInfo();
   // const { parser } = siteInfo;
 
-  // TODO : 디버깅용 true 플래그값 제거
-  if (true || params.response.url.includes("commits.json")) {
+  if (params.response.url.includes(GIT_SERVICE_INFO.gitlab.apiEndpoint)) {
     try {
       const response = await debuggerService.getResponseBody(
         source.tabId,
@@ -50,7 +50,7 @@ async function handleNetworkResponse(source, params) {
         try {
           const jsonResponse = JSON.parse(response.body);
           const commits = GitlabCommitParser.parseCommits(jsonResponse);
-          const { messages } = CommitMessageFormatter.format(commits);
+          const { messages } = await CommitMessageFormatter.format(commits);
 
           commitInterceptorService.detachDebugger(source.tabId);
           MessageDispatcher.sendSuccess("COPY_TO_CLIPBOARD", {

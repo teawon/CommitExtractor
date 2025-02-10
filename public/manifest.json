@@ -3,17 +3,12 @@
   "name": "CommitCrawler",
   "version": "1.0",
   "description": "CommitCrawler",
-  "permissions": [
-    "webRequest",
-    "webRequestBlocking",
-    "activeTab",
-    "scripting",
-    "clipboardWrite",
-    "debugger",
-    "tabs",
-    "storage"
+  "permissions": ["debugger", "tabs", "storage"],
+  "host_permissions": [
+    "https://*.gitlab.com/*",
+    "https://*.gabia.io/*",
+    "https://*.gabia.com/*"
   ],
-  "host_permissions": ["*"],
   "background": {
     "service_worker": "commitInterceptor.js",
     "type": "module"

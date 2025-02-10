@@ -13,6 +13,10 @@ interface StatusElements {
   toast: HTMLDivElement;
   summaryCheckbox: HTMLInputElement;
   previewContent: HTMLDivElement;
+  ticketRegexInput: HTMLInputElement;
+  resetRegexButton: HTMLButtonElement;
+  toggleRegexButton: HTMLButtonElement;
+  regexInputContainer: HTMLDivElement;
 }
 
 interface StoredData {
@@ -23,6 +27,7 @@ interface StoredData {
   }[];
   summary: string;
   summaryChecked: boolean;
+  ticketRegex: string;
 }
 
 const getStatusElements = (): StatusElements | null => {
@@ -39,6 +44,18 @@ const getStatusElements = (): StatusElements | null => {
   const previewContent = document.getElementById(
     "previewContent"
   ) as HTMLDivElement;
+  const ticketRegexInput = document.getElementById(
+    "ticketRegexInput"
+  ) as HTMLInputElement;
+  const resetRegexButton = document.getElementById(
+    "resetRegexButton"
+  ) as HTMLButtonElement;
+  const toggleRegexButton = document.getElementById(
+    "toggleRegexButton"
+  ) as HTMLButtonElement;
+  const regexInputContainer = document.getElementById(
+    "regexInputContainer"
+  ) as HTMLDivElement;
 
   if (
     !startButton ||
@@ -47,7 +64,11 @@ const getStatusElements = (): StatusElements | null => {
     !messageList ||
     !toast ||
     !summaryCheckbox ||
-    !previewContent
+    !previewContent ||
+    !ticketRegexInput ||
+    !resetRegexButton ||
+    !toggleRegexButton ||
+    !regexInputContainer
   ) {
     console.error("필수 DOM 엘리먼트를 찾을 수 없습니다.");
     return null;
@@ -61,6 +82,10 @@ const getStatusElements = (): StatusElements | null => {
     toast: toast,
     summaryCheckbox: summaryCheckbox,
     previewContent,
+    ticketRegexInput,
+    resetRegexButton,
+    toggleRegexButton,
+    regexInputContainer,
   };
 };
 
@@ -69,7 +94,9 @@ const setupEventListeners = (elements: StatusElements): void => {
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const currentUrl = tabs[0]?.url || "";
-    const isValidPath = currentUrl.includes(GIT_SERVICE_INFO.gitlab.domain);
+    const isValidPath = new RegExp(GIT_SERVICE_INFO.gitlab.domain).test(
+      currentUrl
+    );
 
     updateUIForValidPath(elements, isValidPath);
   });
@@ -77,7 +104,6 @@ const setupEventListeners = (elements: StatusElements): void => {
   const {
     copyButton,
     messageList: messageListFromElements,
-    status,
     summaryCheckbox,
   } = elements;
 
@@ -118,7 +144,6 @@ const setupEventListeners = (elements: StatusElements): void => {
     handleClipboardCopy(message, elements);
   });
 
-  // 드래그 앤 드롭 이벤트 리스너 추가
   messageListFromElements.addEventListener("dragstart", (e) => {
     if (e.target instanceof HTMLElement && e.target.closest(".message-item")) {
       const item = e.target.closest(".message-item");
@@ -127,7 +152,6 @@ const setupEventListeners = (elements: StatusElements): void => {
         e.dataTransfer.effectAllowed = "move";
       }
 
-      // 드래그 시작 시 다른 아이템들의 시각적 피드백을 위한 클래스 추가
       const items = messageListFromElements.querySelectorAll(
         ".message-item:not(.dragging)"
       );
@@ -140,7 +164,6 @@ const setupEventListeners = (elements: StatusElements): void => {
       const item = e.target.closest(".message-item");
       item?.classList.remove("dragging");
 
-      // 드래그 종료 시 모든 시각적 피드백 클래스 제거
       const items = messageListFromElements.querySelectorAll(".message-item");
       items.forEach((item) => {
         item.classList.remove("can-drop", "drag-over");
@@ -157,7 +180,6 @@ const setupEventListeners = (elements: StatusElements): void => {
     const draggingItem = messageListFromElements.querySelector(".dragging");
     if (!draggingItem) return;
 
-    // 이전 drag-over 클래스 제거
     const prevDragOver = messageListFromElements.querySelector(".drag-over");
     prevDragOver?.classList.remove("drag-over");
 
@@ -180,6 +202,40 @@ const setupEventListeners = (elements: StatusElements): void => {
       messageListFromElements.appendChild(draggingItem);
     }
   });
+
+  const { ticketRegexInput, resetRegexButton } = elements;
+
+  ticketRegexInput.addEventListener("change", () => {
+    const pattern = ticketRegexInput.value.replace(/^\/|\/$/g, ""); // 슬래시 제거
+    try {
+      new RegExp(pattern); // 유효성 검사
+      CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
+      saveToStorage(elements);
+      updateSummary(elements);
+      updatePreview(elements);
+      showToast(elements, "정규식이 업데이트되었습니다.", "success");
+    } catch (error) {
+      showToast(elements, "유효하지 않은 정규식입니다.", "error");
+      ticketRegexInput.value = "[A-z]+[-_]\\d+";
+    }
+  });
+
+  resetRegexButton.addEventListener("click", () => {
+    ticketRegexInput.value = "/[A-z]+[-_]\\d+/";
+    CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
+    saveToStorage(elements);
+    updateSummary(elements);
+    updatePreview(elements);
+    showToast(elements, "기본 정규식으로 초기화되었습니다.", "success");
+  });
+
+  const { toggleRegexButton, regexInputContainer } = elements;
+
+  toggleRegexButton.addEventListener("click", () => {
+    const toggleIcon = toggleRegexButton.querySelector(".toggle-icon");
+    regexInputContainer.classList.toggle("hidden");
+    toggleIcon?.classList.toggle("open");
+  });
 };
 
 const updateUIForValidPath = (
@@ -190,7 +246,7 @@ const updateUIForValidPath = (
 
   if (!isValid) {
     button.disabled = true;
-    button.innerHTML = `Commit 메세지 불러오기<br><span class="error-text" style="font-size: 12px;">유효한 페이지에서 사용 가능합니다.<br>${GIT_SERVICE_INFO.gitlab.domain}</span>`;
+    button.innerHTML = `Commit 메세지 불러오기<br><span class="error-text" style="font-size: 12px;">유효한 페이지에서 사용 가능합니다. <br>${GIT_SERVICE_INFO.gitlab.urlGuidanceMessage}</span>`;
     previewContent.textContent = "Merge Request 페이지에서 실행해주세요";
   } else {
     button.disabled = false;
@@ -229,12 +285,6 @@ const handleStartInterceptorCommit = async (
       active: true,
       currentWindow: true,
     });
-
-    if (!tab?.url?.includes("merge_requests")) {
-      status.textContent = "올바른 페이지가 아닙니다!";
-      button.disabled = false;
-      return;
-    }
 
     const response = await MessageDispatcher.sendSuccess(
       "START_INTERCEPTOR_COMMIT"
@@ -376,7 +426,8 @@ const createMessageItem = (
 };
 
 const loadFromStorage = async (elements: StatusElements): Promise<void> => {
-  const { messageList, status, copyButton, summaryCheckbox } = elements;
+  const { messageList, status, copyButton, summaryCheckbox, ticketRegexInput } =
+    elements;
 
   const { storedData } = (await chrome.storage.local.get("storedData")) as {
     storedData: StoredData;
@@ -407,13 +458,27 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
   }
 
   updatePreview(elements);
+
+  const { ticketRegex } = (await chrome.storage.local.get("ticketRegex")) as {
+    ticketRegex: string;
+  };
+
+  if (ticketRegex) {
+    ticketRegexInput.value = ticketRegex;
+    CommitMessageFormatter.setTicketRegex(ticketRegex);
+  } else {
+    ticketRegexInput.value = "/[A-z]+[-_]\\d+/";
+  }
+
+  // 처음에는 정규식 입력창을 숨김
+  elements.regexInputContainer.classList.add("hidden");
 };
 
 const handleClipboardCopy = (
   message: MessagePayload,
   elements: StatusElements
 ): void => {
-  const { button, copyButton, status, messageList } = elements;
+  const { button, copyButton, messageList } = elements;
 
   switch (message.action) {
     case "COPY_TO_CLIPBOARD":

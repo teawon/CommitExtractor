@@ -13,11 +13,16 @@ export interface CommitParser {
 export type GitServiceKey = "gitlab";
 
 export const GIT_SERVICE_INFO: {
-  [key in GitServiceKey]: { domain: string; apiEndpoint: string };
+  [key in GitServiceKey]: {
+    domain: string;
+    urlGuidanceMessage: string;
+    apiEndpoint: string;
+  };
 } = {
   gitlab: {
-    domain: "",
-    apiEndpoint: "*",
+    domain: "/merge_requests/\\d+/commits",
+    urlGuidanceMessage: "Merge Request의 commit Tab으로 이동해주세요",
+    apiEndpoint: "commits.json",
   },
   //   github: {
   //     domain: "*",
