@@ -15,6 +15,8 @@ interface StatusElements {
   previewContent: HTMLDivElement;
   ticketRegexInput: HTMLInputElement;
   resetRegexButton: HTMLButtonElement;
+  toggleRegexButton: HTMLButtonElement;
+  regexInputContainer: HTMLDivElement;
 }
 
 interface StoredData {
@@ -48,6 +50,12 @@ const getStatusElements = (): StatusElements | null => {
   const resetRegexButton = document.getElementById(
     "resetRegexButton"
   ) as HTMLButtonElement;
+  const toggleRegexButton = document.getElementById(
+    "toggleRegexButton"
+  ) as HTMLButtonElement;
+  const regexInputContainer = document.getElementById(
+    "regexInputContainer"
+  ) as HTMLDivElement;
 
   if (
     !startButton ||
@@ -58,7 +66,9 @@ const getStatusElements = (): StatusElements | null => {
     !summaryCheckbox ||
     !previewContent ||
     !ticketRegexInput ||
-    !resetRegexButton
+    !resetRegexButton ||
+    !toggleRegexButton ||
+    !regexInputContainer
   ) {
     console.error("필수 DOM 엘리먼트를 찾을 수 없습니다.");
     return null;
@@ -74,6 +84,8 @@ const getStatusElements = (): StatusElements | null => {
     previewContent,
     ticketRegexInput,
     resetRegexButton,
+    toggleRegexButton,
+    regexInputContainer,
   };
 };
 
@@ -216,6 +228,14 @@ const setupEventListeners = (elements: StatusElements): void => {
     updatePreview(elements);
     showToast(elements, "기본 정규식으로 초기화되었습니다.", "success");
   });
+
+  const { toggleRegexButton, regexInputContainer } = elements;
+
+  toggleRegexButton.addEventListener("click", () => {
+    const toggleIcon = toggleRegexButton.querySelector(".toggle-icon");
+    regexInputContainer.classList.toggle("hidden");
+    toggleIcon?.classList.toggle("open");
+  });
 };
 
 const updateUIForValidPath = (
@@ -226,8 +246,7 @@ const updateUIForValidPath = (
 
   if (!isValid) {
     button.disabled = true;
-    button.innerHTML = `Commit 메세지 불러오기<br><span class="error-text" style="font-size: 12px;">유효한 페이지에서 사용 가능합니다.</span>`;
-    // <br>${GIT_SERVICE_INFO.gitlab.domain}
+    button.innerHTML = `Commit 메세지 불러오기<br><span class="error-text" style="font-size: 12px;">유효한 페이지에서 사용 가능합니다. <br>${GIT_SERVICE_INFO.gitlab.urlGuidanceMessage}</span>`;
     previewContent.textContent = "Merge Request 페이지에서 실행해주세요";
   } else {
     button.disabled = false;
@@ -451,6 +470,9 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
   } else {
     ticketRegexInput.value = "/[A-z]+[-_]\\d+/";
   }
+
+  // 처음에는 정규식 입력창을 숨김
+  elements.regexInputContainer.classList.add("hidden");
 };
 
 const handleClipboardCopy = (

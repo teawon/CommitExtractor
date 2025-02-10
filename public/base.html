@@ -257,18 +257,54 @@
         width: 100%;
       }
 
+      .regex-toggle-container {
+        margin-top: 4px;
+        text-align: right;
+      }
+
+      .toggle-link {
+        background: none;
+        border: none;
+        padding: 4px;
+        color: #1a73e8;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .toggle-link:hover {
+        text-decoration: underline;
+      }
+
+      .toggle-icon {
+        font-size: 8px;
+        transition: transform 0.2s;
+      }
+
+      .toggle-icon.open {
+        transform: rotate(180deg);
+      }
+
       .regex-input-container {
+        margin-top: 8px;
         display: flex;
         gap: 8px;
-        margin-top: 8px;
+        transition: all 0.2s;
+      }
+
+      .regex-input-container.hidden {
+        display: none;
       }
 
       .regex-input {
         flex: 1;
-        padding: 8px;
+        padding: 6px 8px;
         border: 1px solid #ddd;
         border-radius: 4px;
         font-family: monospace;
+        font-size: 12px;
       }
 
       .reset-button {
@@ -277,6 +313,7 @@
         border-radius: 4px;
         background: white;
         cursor: pointer;
+        font-size: 12px;
       }
 
       .reset-button:hover {
@@ -291,20 +328,30 @@
           <button id="startButton" class="button">
             Commit 메세지 불러오기
           </button>
-          <div class="regex-input-container">
-            <input
-              type="text"
-              id="ticketRegexInput"
-              class="regex-input"
-              placeholder="티켓 추출 정규식"
-            />
+          <div class="regex-toggle-container">
             <button
-              id="resetRegexButton"
-              class="reset-button"
-              title="기본값으로 초기화"
+              id="toggleRegexButton"
+              class="toggle-link"
+              title="정규식 설정"
             >
-              ↺
+              티켓 추출 정규식 설정
+              <span class="toggle-icon">▼</span>
             </button>
+            <div id="regexInputContainer" class="regex-input-container hidden">
+              <input
+                type="text"
+                id="ticketRegexInput"
+                class="regex-input"
+                placeholder="티켓 추출 정규식"
+              />
+              <button
+                id="resetRegexButton"
+                class="reset-button"
+                title="기본값으로 초기화"
+              >
+                ↺
+              </button>
+            </div>
           </div>
         </div>
         <div id="messageList" class="message-list"></div>
