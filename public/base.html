@@ -256,6 +256,32 @@
         margin-bottom: 15px;
         width: 100%;
       }
+
+      .regex-input-container {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .regex-input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+
+      .reset-button {
+        padding: 4px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+      }
+
+      .reset-button:hover {
+        background: #f5f5f5;
+      }
     </style>
   </head>
   <body>
@@ -265,6 +291,21 @@
           <button id="startButton" class="button">
             Commit 메세지 불러오기
           </button>
+          <div class="regex-input-container">
+            <input
+              type="text"
+              id="ticketRegexInput"
+              class="regex-input"
+              placeholder="티켓 추출 정규식"
+            />
+            <button
+              id="resetRegexButton"
+              class="reset-button"
+              title="기본값으로 초기화"
+            >
+              ↺
+            </button>
+          </div>
         </div>
         <div id="messageList" class="message-list"></div>
         <div class="status-container">

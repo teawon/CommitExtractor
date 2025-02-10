@@ -53,7 +53,7 @@ async function handleNetworkResponse(source, params) {
         try {
           const jsonResponse = JSON.parse(response.body);
           const commits = GitlabCommitParser.parseCommits(jsonResponse);
-          const { messages } = CommitMessageFormatter.format(commits);
+          const { messages } = await CommitMessageFormatter.format(commits);
 
           commitInterceptorService.detachDebugger(source.tabId);
           MessageDispatcher.sendSuccess("COPY_TO_CLIPBOARD", {

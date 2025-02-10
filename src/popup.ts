@@ -13,6 +13,8 @@ interface StatusElements {
   toast: HTMLDivElement;
   summaryCheckbox: HTMLInputElement;
   previewContent: HTMLDivElement;
+  ticketRegexInput: HTMLInputElement;
+  resetRegexButton: HTMLButtonElement;
 }
 
 interface StoredData {
@@ -23,6 +25,7 @@ interface StoredData {
   }[];
   summary: string;
   summaryChecked: boolean;
+  ticketRegex: string;
 }
 
 const getStatusElements = (): StatusElements | null => {
@@ -39,6 +42,12 @@ const getStatusElements = (): StatusElements | null => {
   const previewContent = document.getElementById(
     "previewContent"
   ) as HTMLDivElement;
+  const ticketRegexInput = document.getElementById(
+    "ticketRegexInput"
+  ) as HTMLInputElement;
+  const resetRegexButton = document.getElementById(
+    "resetRegexButton"
+  ) as HTMLButtonElement;
 
   if (
     !startButton ||
@@ -47,7 +56,9 @@ const getStatusElements = (): StatusElements | null => {
     !messageList ||
     !toast ||
     !summaryCheckbox ||
-    !previewContent
+    !previewContent ||
+    !ticketRegexInput ||
+    !resetRegexButton
   ) {
     console.error("필수 DOM 엘리먼트를 찾을 수 없습니다.");
     return null;
@@ -61,6 +72,8 @@ const getStatusElements = (): StatusElements | null => {
     toast: toast,
     summaryCheckbox: summaryCheckbox,
     previewContent,
+    ticketRegexInput,
+    resetRegexButton,
   };
 };
 
@@ -176,6 +189,32 @@ const setupEventListeners = (elements: StatusElements): void => {
       }
       messageListFromElements.appendChild(draggingItem);
     }
+  });
+
+  const { ticketRegexInput, resetRegexButton } = elements;
+
+  ticketRegexInput.addEventListener("change", () => {
+    const pattern = ticketRegexInput.value.replace(/^\/|\/$/g, ""); // 슬래시 제거
+    try {
+      new RegExp(pattern); // 유효성 검사
+      CommitMessageFormatter.setTicketRegex(pattern);
+      saveToStorage(elements);
+      updateSummary(elements);
+      updatePreview(elements);
+      showToast(elements, "정규식이 업데이트되었습니다.", "success");
+    } catch (error) {
+      showToast(elements, "유효하지 않은 정규식입니다.", "error");
+      ticketRegexInput.value = "[A-z]+[-_]\\d+";
+    }
+  });
+
+  resetRegexButton.addEventListener("click", () => {
+    ticketRegexInput.value = "/[A-z]+[-_]\\d+/";
+    CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
+    saveToStorage(elements);
+    updateSummary(elements);
+    updatePreview(elements);
+    showToast(elements, "기본 정규식으로 초기화되었습니다.", "success");
   });
 };
 
@@ -318,7 +357,7 @@ const updatePreview = (elements: StatusElements): void => {
 };
 
 const saveToStorage = async (elements: StatusElements): Promise<void> => {
-  const { messageList, status, summaryCheckbox } = elements;
+  const { messageList, status, summaryCheckbox, ticketRegexInput } = elements;
 
   const messages = Array.from(
     messageList.querySelectorAll(".message-item")
@@ -341,6 +380,7 @@ const saveToStorage = async (elements: StatusElements): Promise<void> => {
       messages,
       summary: status.textContent,
       summaryChecked: summaryCheckbox.checked,
+      ticketRegex: ticketRegexInput.value,
     },
   });
 };
@@ -368,7 +408,8 @@ const createMessageItem = (
 };
 
 const loadFromStorage = async (elements: StatusElements): Promise<void> => {
-  const { messageList, status, copyButton, summaryCheckbox } = elements;
+  const { messageList, status, copyButton, summaryCheckbox, ticketRegexInput } =
+    elements;
 
   const { storedData } = (await chrome.storage.local.get("storedData")) as {
     storedData: StoredData;
@@ -399,6 +440,17 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
   }
 
   updatePreview(elements);
+
+  const { ticketRegex } = (await chrome.storage.local.get("ticketRegex")) as {
+    ticketRegex: string;
+  };
+
+  if (ticketRegex) {
+    ticketRegexInput.value = ticketRegex;
+    CommitMessageFormatter.setTicketRegex(ticketRegex);
+  } else {
+    ticketRegexInput.value = "/[A-z]+[-_]\\d+/";
+  }
 };
 
 const handleClipboardCopy = (
