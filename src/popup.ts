@@ -209,7 +209,7 @@ const setupEventListeners = (elements: StatusElements): void => {
     const pattern = ticketRegexInput.value.replace(/^\/|\/$/g, ""); // 슬래시 제거
     try {
       new RegExp(pattern); // 유효성 검사
-      CommitMessageFormatter.setTicketRegex(pattern);
+      CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
       saveToStorage(elements);
       updateSummary(elements);
       updatePreview(elements);
@@ -376,7 +376,7 @@ const updatePreview = (elements: StatusElements): void => {
 };
 
 const saveToStorage = async (elements: StatusElements): Promise<void> => {
-  const { messageList, status, summaryCheckbox, ticketRegexInput } = elements;
+  const { messageList, status, summaryCheckbox } = elements;
 
   const messages = Array.from(
     messageList.querySelectorAll(".message-item")
@@ -399,7 +399,6 @@ const saveToStorage = async (elements: StatusElements): Promise<void> => {
       messages,
       summary: status.textContent,
       summaryChecked: summaryCheckbox.checked,
-      ticketRegex: ticketRegexInput.value,
     },
   });
 };

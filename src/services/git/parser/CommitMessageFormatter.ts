@@ -37,7 +37,7 @@ export class CommitMessageFormatter {
 
   private static cleanMessage(message: string): string {
     return message
-      .replace(/^(feat|fix|refactor|chore|docs|style|test|perf):\s*/i, "")
+      .replace(/^(feat|fix|refactor|chore|docs|style|test|perf)\s*:\s*/i, "")
       .trim();
   }
 
