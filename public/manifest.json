@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "CommitCrawler",
+  "name": "CommitExtractor",
   "version": "1.0",
-  "description": "CommitCrawler",
+  "description": "A tool for extracting commit messages and generating PR templates with custom regex patterns.",
   "permissions": ["debugger", "tabs", "storage"],
   "host_permissions": [
     "https://*.gitlab.com/*",
