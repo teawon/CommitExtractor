@@ -108,7 +108,6 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
-        max-height: 400px;
         overflow-y: auto;
         margin-bottom: 15px;
         padding: 4px;
@@ -329,12 +328,25 @@
         display: none;
       }
 
+      .regex-inputs {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+      }
+
       .input-wrapper {
-        flex: 1;
         display: flex;
         flex-direction: column;
         gap: 4px;
-        margin-right: 4px;
+        width: 100%;
+      }
+
+      .input-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
       }
 
       .input-label {
@@ -344,7 +356,7 @@
       }
 
       .regex-input {
-        width: 100%;
+        flex: 1;
         padding: 6px 8px;
         border: 1px solid #dee2e6;
         border-radius: 4px;
@@ -380,28 +392,56 @@
             </button>
           </div>
           <div id="regexInputContainer" class="regex-input-container hidden">
-            <div class="input-wrapper">
-              <label class="input-label" for="ticketRegexInput"
-                >키 추출 정규식</label
-              >
-              <input
-                type="text"
-                id="ticketRegexInput"
-                class="regex-input"
-                placeholder="예: [A-Z]+-\d+"
-              />
+            <div class="regex-inputs">
+              <div class="input-wrapper">
+                <label class="input-label" for="ticketRegexInput"
+                  >키 추출 정규식</label
+                >
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="ticketRegexInput"
+                    class="regex-input"
+                    placeholder="예: [A-Z]+-\d+"
+                  />
+                  <button
+                    id="resetRegexButton"
+                    class="icon-button"
+                    title="기본값으로 초기화"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path
+                        d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="input-wrapper">
+                <label class="input-label" for="cleanRegexInput"
+                  >접두사 제거 정규식</label
+                >
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="cleanRegexInput"
+                    class="regex-input"
+                    placeholder="예: feat:|fix:|refactor:"
+                  />
+                  <button
+                    id="resetCleanRegexButton"
+                    class="icon-button"
+                    title="기본값으로 초기화"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path
+                        d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
-            <button
-              id="resetRegexButton"
-              class="icon-button"
-              title="기본값으로 초기화"
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path
-                  d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
-                />
-              </svg>
-            </button>
           </div>
         </div>
         <div id="messageList" class="message-list"></div>
@@ -410,7 +450,7 @@
             <div class="status-checkbox">
               <input type="checkbox" id="summaryCheckbox" checked />
             </div>
-            <div id="status" class="status">-</div>
+            <div id="status" class="status"></div>
           </div>
         </div>
       </div>

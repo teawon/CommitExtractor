@@ -11,6 +11,8 @@ interface FormattedMessage {
 
 export class CommitMessageFormatter {
   private static DEFAULT_TICKET_REGEX = /[A-z]+[-_]\d+/;
+  private static DEFAULT_CLEAN_REGEX =
+    /^(feat|fix|refactor|chore|docs|style|test|perf)\s*:\s*/;
 
   private static async getCurrentRegex(): Promise<RegExp> {
     const { ticketRegex } = (await chrome.storage.local.get("ticketRegex")) as {
@@ -27,6 +29,21 @@ export class CommitMessageFormatter {
     return this.DEFAULT_TICKET_REGEX;
   }
 
+  private static async getCurrentCleanRegex(): Promise<RegExp> {
+    const { cleanRegex } = (await chrome.storage.local.get("cleanRegex")) as {
+      cleanRegex: string;
+    };
+    if (cleanRegex) {
+      try {
+        const pattern = cleanRegex.replace(/^\/|\/$/g, "");
+        return new RegExp(pattern);
+      } catch (error) {
+        console.error("Invalid stored clean regex:", error);
+      }
+    }
+    return this.DEFAULT_CLEAN_REGEX;
+  }
+
   public static setTicketRegex(pattern: string): void {
     try {
       chrome.storage.local.set({ ticketRegex: pattern });
@@ -35,10 +52,25 @@ export class CommitMessageFormatter {
     }
   }
 
-  private static cleanMessage(message: string): string {
-    return message
-      .replace(/^(feat|fix|refactor|chore|docs|style|test|perf)\s*:\s*/i, "")
-      .trim();
+  public static setCleanRegex(pattern: string): void {
+    try {
+      chrome.storage.local.set({ cleanRegex: pattern });
+    } catch (error) {
+      console.error("Invalid clean regex pattern:", error);
+    }
+  }
+
+  public static getDefaultTicketPattern(): string {
+    return this.DEFAULT_TICKET_REGEX.source;
+  }
+
+  public static getDefaultCleanPattern(): string {
+    return this.DEFAULT_CLEAN_REGEX.source;
+  }
+
+  private static async cleanMessage(message: string): Promise<string> {
+    const regex = await this.getCurrentCleanRegex();
+    return message.replace(regex, "").trim();
   }
 
   private static async extractTicketInfo(
@@ -58,12 +90,14 @@ export class CommitMessageFormatter {
       return "-";
     };
 
-    console.log(commits);
-
-    return commits.map((commit) => ({
-      key: getTicketKey(commit),
-      text: this.cleanMessage(commit.message),
-    }));
+    const messages = [];
+    for (const commit of commits) {
+      messages.push({
+        key: getTicketKey(commit),
+        text: await this.cleanMessage(commit.message),
+      });
+    }
+    return messages;
   }
 
   public static generateKeySummary(commitList: FormattedMessage[]): string {

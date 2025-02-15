@@ -17,6 +17,8 @@ interface StatusElements {
   resetRegexButton: HTMLButtonElement;
   toggleRegexButton: HTMLButtonElement;
   regexInputContainer: HTMLDivElement;
+  cleanRegexInput: HTMLInputElement;
+  resetCleanRegexButton: HTMLButtonElement;
 }
 
 interface StoredData {
@@ -56,6 +58,12 @@ const getStatusElements = (): StatusElements | null => {
   const regexInputContainer = document.getElementById(
     "regexInputContainer"
   ) as HTMLDivElement;
+  const cleanRegexInput = document.getElementById(
+    "cleanRegexInput"
+  ) as HTMLInputElement;
+  const resetCleanRegexButton = document.getElementById(
+    "resetCleanRegexButton"
+  ) as HTMLButtonElement;
 
   if (
     !startButton ||
@@ -68,7 +76,9 @@ const getStatusElements = (): StatusElements | null => {
     !ticketRegexInput ||
     !resetRegexButton ||
     !toggleRegexButton ||
-    !regexInputContainer
+    !regexInputContainer ||
+    !cleanRegexInput ||
+    !resetCleanRegexButton
   ) {
     console.error("필수 DOM 엘리먼트를 찾을 수 없습니다.");
     return null;
@@ -86,6 +96,8 @@ const getStatusElements = (): StatusElements | null => {
     resetRegexButton,
     toggleRegexButton,
     regexInputContainer,
+    cleanRegexInput,
+    resetCleanRegexButton,
   };
 };
 
@@ -206,9 +218,9 @@ const setupEventListeners = (elements: StatusElements): void => {
   const { ticketRegexInput, resetRegexButton } = elements;
 
   ticketRegexInput.addEventListener("change", () => {
-    const pattern = ticketRegexInput.value.replace(/^\/|\/$/g, ""); // 슬래시 제거
+    const pattern = ticketRegexInput.value.replace(/^\/|\/$/g, "");
     try {
-      new RegExp(pattern); // 유효성 검사
+      new RegExp(pattern);
       CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
       saveToStorage(elements);
       updateSummary(elements);
@@ -216,12 +228,12 @@ const setupEventListeners = (elements: StatusElements): void => {
       showToast(elements, "정규식이 업데이트되었습니다.", "success");
     } catch (error) {
       showToast(elements, "유효하지 않은 정규식입니다.", "error");
-      ticketRegexInput.value = "[A-z]+[-_]\\d+";
+      ticketRegexInput.value = CommitMessageFormatter.getDefaultTicketPattern();
     }
   });
 
   resetRegexButton.addEventListener("click", () => {
-    ticketRegexInput.value = "/[A-z]+[-_]\\d+/";
+    ticketRegexInput.value = `/${CommitMessageFormatter.getDefaultTicketPattern()}/`;
     CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
     saveToStorage(elements);
     updateSummary(elements);
@@ -235,6 +247,40 @@ const setupEventListeners = (elements: StatusElements): void => {
     const toggleIcon = toggleRegexButton.querySelector(".toggle-icon");
     regexInputContainer.classList.toggle("hidden");
     toggleIcon?.classList.toggle("open");
+  });
+
+  const { cleanRegexInput, resetCleanRegexButton } = elements;
+
+  cleanRegexInput.addEventListener("change", () => {
+    const pattern = cleanRegexInput.value.replace(/^\/|\/$/g, "");
+    try {
+      new RegExp(pattern);
+      CommitMessageFormatter.setCleanRegex(cleanRegexInput.value);
+      saveToStorage(elements);
+      updateSummary(elements);
+      updatePreview(elements);
+      showToast(
+        elements,
+        "접두사 제거 정규식이 업데이트되었습니다.",
+        "success"
+      );
+    } catch (error) {
+      showToast(elements, "유효하지 않은 정규식입니다.", "error");
+      cleanRegexInput.value = CommitMessageFormatter.getDefaultCleanPattern();
+    }
+  });
+
+  resetCleanRegexButton.addEventListener("click", () => {
+    cleanRegexInput.value = CommitMessageFormatter.getDefaultCleanPattern();
+    CommitMessageFormatter.setCleanRegex(cleanRegexInput.value);
+    saveToStorage(elements);
+    updateSummary(elements);
+    updatePreview(elements);
+    showToast(
+      elements,
+      "기본 접두사 제거 정규식으로 초기화되었습니다.",
+      "success"
+    );
   });
 };
 
@@ -447,7 +493,7 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
       });
     });
 
-    status.textContent = storedData.summary || "-";
+    status.textContent = storedData.summary || "";
     copyButton.disabled = false;
   }
 
@@ -467,11 +513,23 @@ const loadFromStorage = async (elements: StatusElements): Promise<void> => {
     ticketRegexInput.value = ticketRegex;
     CommitMessageFormatter.setTicketRegex(ticketRegex);
   } else {
-    ticketRegexInput.value = "/[A-z]+[-_]\\d+/";
+    ticketRegexInput.value = `/${CommitMessageFormatter.getDefaultTicketPattern()}/`;
   }
 
   // 처음에는 정규식 입력창을 숨김
   elements.regexInputContainer.classList.add("hidden");
+
+  const { cleanRegex } = (await chrome.storage.local.get("cleanRegex")) as {
+    cleanRegex: string;
+  };
+
+  if (cleanRegex) {
+    elements.cleanRegexInput.value = cleanRegex;
+    CommitMessageFormatter.setCleanRegex(cleanRegex);
+  } else {
+    elements.cleanRegexInput.value =
+      CommitMessageFormatter.getDefaultCleanPattern();
+  }
 };
 
 const handleClipboardCopy = (
