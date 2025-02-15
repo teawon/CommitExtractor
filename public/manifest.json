@@ -9,6 +9,11 @@
     "https://*.gabia.io/*",
     "https://*.gabia.com/*"
   ],
+  "icons": {
+    "16": "static/images/toolbar.png",
+    "48": "static/images/toolbar.png",
+    "128": "static/images/toolbar.png"
+  },
   "background": {
     "service_worker": "commitInterceptor.js",
     "type": "module"

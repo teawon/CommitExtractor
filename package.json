@@ -7,7 +7,7 @@
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
     "build": "tsc",
-    "postbuild": "cp -r public/* dist/ && cp src/*.js dist/",
+    "postbuild": "cp -r public/* dist/",
     "watch": "tsc -w"
   },
   "keywords": [],
