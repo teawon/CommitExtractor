@@ -334,7 +334,7 @@ const updateSummary = (elements: StatusElements): void => {
     })
   );
 
-  status.textContent = summary || "-";
+  status.textContent = summary;
   toggleSummaryCheckbox(elements);
   saveToStorage(elements);
 };
