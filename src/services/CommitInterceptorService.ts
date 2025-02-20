@@ -25,17 +25,25 @@ export class CommitInterceptorService {
     }
   }
 
-  private async getActiveTab() {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      lastFocusedWindow: true,
+  private async getActiveTab(): Promise<chrome.tabs.Tab> {
+    return new Promise((resolve, reject) => {
+      chrome.windows.getCurrent(async (window) => {
+        try {
+          const [tab] = await chrome.tabs.query({
+            active: true,
+            windowId: window.id,
+          });
+
+          if (!tab?.id) {
+            throw new Error("활성 탭을 찾을 수 없습니다.");
+          }
+
+          resolve(tab);
+        } catch (error) {
+          reject(error);
+        }
+      });
     });
-
-    if (!tab?.id) {
-      throw new Error("활성 탭을 찾을 수 없습니다.");
-    }
-
-    return tab;
   }
 
   private async initializeDebugger(tabId: number) {
