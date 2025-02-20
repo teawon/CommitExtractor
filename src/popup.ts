@@ -1,9 +1,9 @@
-import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter.js";
-import { GIT_SERVICE_INFO } from "./services/git/types.js";
+import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter";
+import { GIT_SERVICE_INFO } from "./services/git/types";
 import {
   MessageDispatcher,
   MessagePayload,
-} from "./services/MessageDispatcher.js";
+} from "./services/MessageDispatcher";
 
 interface StatusElements {
   button: HTMLButtonElement;

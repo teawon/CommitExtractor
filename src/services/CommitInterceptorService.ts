@@ -1,6 +1,6 @@
-import { TaskExecutionController } from "./TaskExecutionController.js";
-import { DebuggerService } from "./DebuggerService.js";
-import { MessageDispatcher } from "./MessageDispatcher.js";
+import { TaskExecutionController } from "./TaskExecutionController";
+import { DebuggerService } from "./DebuggerService";
+import { MessageDispatcher } from "./MessageDispatcher";
 
 export class CommitInterceptorService {
   constructor(

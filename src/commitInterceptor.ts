@@ -1,13 +1,13 @@
-import { CommitInterceptorService } from "./services/CommitInterceptorService.js";
-import { TaskExecutionController } from "./services/TaskExecutionController.js";
-import { DebuggerService } from "./services/DebuggerService.js";
+import { CommitInterceptorService } from "./services/CommitInterceptorService";
+import { TaskExecutionController } from "./services/TaskExecutionController";
+import { DebuggerService } from "./services/DebuggerService";
 import {
   MessageDispatcher,
   MessagePayload,
-} from "./services/MessageDispatcher.js";
-import { GitlabCommitParser } from "./services/git/parser/GitlabCommitParser.js";
-import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter.js";
-import { GIT_SERVICE_INFO } from "./services/git/types.js";
+} from "./services/MessageDispatcher";
+import { GitlabCommitParser } from "./services/git/parser/GitlabCommitParser";
+import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter";
+import { GIT_SERVICE_INFO } from "./services/git/types";
 
 const debuggerService = new DebuggerService();
 const commitInterceptorService = new CommitInterceptorService(
