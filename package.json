@@ -6,15 +6,20 @@
   "scripts": {
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "build": "tsc",
-    "postbuild": "cp -r public/* dist/",
-    "watch": "tsc -w"
+    "build": "webpack --config webpack.config.js",
+    "dev": "webpack --config webpack.config.js --mode=development --watch",
+    "postbuild": "cp -r public/* dist/"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@types/chrome": "^0.0.xxx",
-    "typescript": "^5.x.x"
+    "glob": "^11.0.1",
+    "terser-webpack-plugin": "^5.3.11",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.7.3",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1"
   }
 }
