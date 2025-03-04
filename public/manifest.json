@@ -4,11 +4,7 @@
   "version": "1.0.2",
   "description": "A tool for extracting commit messages and generating PR templates with custom regex patterns.",
   "permissions": ["debugger", "tabs", "storage"],
-  "host_permissions": [
-    "https://*.gitlab.com/*",
-    "https://*.gabia.io/*",
-    "https://*.gabia.com/*"
-  ],
+  "host_permissions": ["*"],
   "icons": {
     "16": "static/images/toolbar.png",
     "48": "static/images/toolbar.png",
