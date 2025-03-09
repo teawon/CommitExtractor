@@ -13,10 +13,10 @@ interface MessageResponse {
   error?: string;
 }
 
-interface SuccessPayload {
+interface SuccessPayload<T = unknown> {
   type: "success";
   action: SuccessMessageType;
-  data?: unknown;
+  data?: T;
 }
 
 interface ErrorPayload {
@@ -25,13 +25,13 @@ interface ErrorPayload {
   error?: string;
 }
 
-export type MessagePayload = SuccessPayload | ErrorPayload;
+export type MessagePayload<T = unknown> = SuccessPayload<T> | ErrorPayload;
 
 /**
  * Chrome 확장 프로그램의 메시지 통신을 처리
  */
 export class MessageDispatcher {
-  static sendSuccess(action: SuccessMessageType, data?: unknown) {
+  static sendSuccess<T = unknown>(action: SuccessMessageType, data?: T) {
     return this.dispatch({
       type: "success",
       action,
@@ -47,7 +47,9 @@ export class MessageDispatcher {
     });
   }
 
-  private static dispatch(payload: MessagePayload) {
-    return chrome.runtime.sendMessage<MessagePayload, MessageResponse>(payload);
+  private static dispatch<T = unknown>(payload: MessagePayload<T>) {
+    return chrome.runtime.sendMessage<MessagePayload<T>, MessageResponse>(
+      payload
+    );
   }
 }

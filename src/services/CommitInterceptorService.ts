@@ -12,38 +12,19 @@ export class CommitInterceptorService {
     return this.taskExecutionController.isTaskExecution;
   }
 
-  async initializeCommitInterceptor(sendResponse: (response: any) => void) {
+  async initializeCommitInterceptor(
+    sendResponse: (response: any) => void,
+    tabId: number
+  ) {
     try {
-      const tab = await this.getActiveTab();
-      await this.initializeDebugger(tab.id);
-      this.setupTimeoutHandler(tab.id);
-      await this.reloadTab(tab.id);
+      await this.initializeDebugger(tabId);
+      this.setupTimeoutHandler(tabId);
+      await this.reloadTab(tabId);
 
       sendResponse({ status: "success" });
     } catch (error) {
       this.handleError(error);
     }
-  }
-
-  private async getActiveTab(): Promise<chrome.tabs.Tab> {
-    return new Promise((resolve, reject) => {
-      chrome.windows.getCurrent(async (window) => {
-        try {
-          const [tab] = await chrome.tabs.query({
-            active: true,
-            windowId: window.id,
-          });
-
-          if (!tab?.id) {
-            throw new Error("활성 탭을 찾을 수 없습니다.");
-          }
-
-          resolve(tab);
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
   }
 
   private async initializeDebugger(tabId: number) {
