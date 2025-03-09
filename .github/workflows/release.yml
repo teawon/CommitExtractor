@@ -19,6 +19,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Sync Version
+        run: npm run version
+
       - name: Create Release Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
