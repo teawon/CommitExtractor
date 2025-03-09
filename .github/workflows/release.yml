@@ -16,8 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          base: main
-          head: develop
+          fetch-depth: 0 # 전체 히스토리를 가져옴
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -31,12 +30,17 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Create Release Pull Request or Publish
-        id: changesets
-        uses: changesets/action@v1
+      - name: Create Release Pull Request
+        uses: peter-evans/create-pull-request@v5
         with:
-          publish: npm run release
-          title: "🚀 Version Packages"
-          commit: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: develop
+          title: "🚀 Release"
+          body: |
+            Release PR
+            - 버전 업데이트 및 변경사항 반영
+          commit-message: "chore: version packages"
+          delete-branch: false
+          labels: |
+            release
+            automated pr
