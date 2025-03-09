@@ -22,4 +22,4 @@ CommitCrawler는 GitLab Merge Request 페이지에서 커밋 메시지를 수집
 
 ## 버전 정보
 
-[CHANGELOG.md](./src/CHANGELOG.md)
+[CHANGELOG.md](./CHANGELOG.md)
