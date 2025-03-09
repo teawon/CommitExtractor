@@ -15,11 +15,18 @@ const commitInterceptorService = new CommitInterceptorService(
   debuggerService
 );
 
-// 디버거 설정 및 페이지 리로드
 chrome.runtime.onMessage.addListener(
-  (message: MessagePayload, sender, sendResponse) => {
+  (message: MessagePayload<{ targetTabId: number }>, sender, sendResponse) => {
     if (message.action === "START_INTERCEPTOR_COMMIT") {
-      commitInterceptorService.initializeCommitInterceptor(sendResponse);
+      const targetTabId = message.data?.targetTabId;
+      if (!targetTabId) {
+        sendResponse({ status: "error", message: "탭 ID가 없습니다." });
+        return true;
+      }
+      commitInterceptorService.initializeCommitInterceptor(
+        sendResponse,
+        targetTabId
+      );
       return true;
     }
   }

@@ -323,7 +323,7 @@ const showToast = (
 const handleStartInterceptorCommit = async (
   elements: StatusElements
 ): Promise<void> => {
-  const { button, status } = elements;
+  const { button } = elements;
   button.disabled = true;
 
   try {
@@ -331,9 +331,13 @@ const handleStartInterceptorCommit = async (
       active: true,
       currentWindow: true,
     });
+    if (!tab?.id) {
+      throw new Error("활성 탭을 찾을 수 없습니다.");
+    }
 
     const response = await MessageDispatcher.sendSuccess(
-      "START_INTERCEPTOR_COMMIT"
+      "START_INTERCEPTOR_COMMIT",
+      { targetTabId: tab.id }
     );
 
     if (response.status === "success") {
