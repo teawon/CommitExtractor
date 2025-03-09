@@ -1,5 +1,12 @@
 # commitcrawler
 
+## 1.0.3
+
+### Patch Changes
+
+- 6e16f19: 다중 탭 정보 읽기 데이터 불일치 문제 수정
+- 3aac215: changesets 기반의 버전관리
+
 ## 1.0.2
 
 ### Patch Changes

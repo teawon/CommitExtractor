@@ -1,9 +1,6 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - develop
   pull_request:
     types: [closed]
     branches:
@@ -14,11 +11,16 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   create-release-pr:
-    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Create Release Pull Request
+        uses: peter-evans/create-pull-request@v5
         with:
           base: main
           head: develop
@@ -26,28 +28,7 @@ jobs:
           title: "🚀 Release: Merge develop to main"
           body: |
             ## 변경사항
-            ${{ github.event_name == 'pull_request' && github.event.pull_request.body || 'Direct push to develop' }}
+            ${{ github.event.pull_request.title }}
+            ${{ github.event.pull_request.body }}
           commit-message: "chore: merge develop to main"
           delete-branch: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: "npm"
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Create Release Pull Request or Publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: npm run release
-          title: "🚀 Version Packages"
-          commit: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
