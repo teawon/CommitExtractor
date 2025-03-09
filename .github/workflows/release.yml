@@ -1,7 +1,8 @@
 name: Release
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - develop
 
@@ -9,38 +10,25 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  release:
-    name: Release
+  create-release-pr:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # 전체 히스토리를 가져옴
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: "npm"
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
+          fetch-depth: 0
 
       - name: Create Release Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
           base: main
-          branch: develop
-          title: "🚀 Release"
+          head: develop
+          branch: release
+          title: "🚀 Release: Merge develop to main"
           body: |
-            Release PR
-            - 버전 업데이트 및 변경사항 반영
-          commit-message: "chore: version packages"
-          delete-branch: false
-          labels: |
-            release
-            automated pr
+            ## 변경사항
+            ${{ github.event.pull_request.title }}
+            ${{ github.event.pull_request.body }}
+          commit-message: "chore: merge develop to main"
+          delete-branch: true
