@@ -104,14 +104,29 @@ const getStatusElements = (): StatusElements | null => {
 const setupEventListeners = (elements: StatusElements): void => {
   const { button, previewContent } = elements;
 
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const currentUrl = tabs[0]?.url || "";
-    const isValidPath = new RegExp(GIT_SERVICE_INFO.gitlab.domain).test(
-      currentUrl
-    );
+  const urlParams = new URLSearchParams(window.location.search);
+  const originalUrlParam = urlParams.get("originalUrl");
 
-    updateUIForValidPath(elements, isValidPath);
-  });
+  if (originalUrlParam) {
+    try {
+      const decodedUrl = decodeURIComponent(originalUrlParam);
+      const isValidPath = new RegExp(GIT_SERVICE_INFO.gitlab.domain).test(
+        decodedUrl
+      );
+      updateUIForValidPath(elements, isValidPath, decodedUrl);
+    } catch (e) {
+      console.error("Failed to decode URL parameter:", e);
+      updateUIForValidPath(elements, false, "Invalid URL parameter");
+    }
+  } else {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const currentUrl = tabs[0]?.url || "";
+      const isValidPath = new RegExp(GIT_SERVICE_INFO.gitlab.domain).test(
+        currentUrl
+      );
+      updateUIForValidPath(elements, isValidPath, currentUrl);
+    });
+  }
 
   const {
     copyButton,
@@ -286,13 +301,14 @@ const setupEventListeners = (elements: StatusElements): void => {
 
 const updateUIForValidPath = (
   elements: StatusElements,
-  isValid: boolean
+  isValid: boolean,
+  url: string
 ): void => {
   const { button, previewContent } = elements;
 
   if (!isValid) {
     button.disabled = true;
-    button.innerHTML = `Commit 메세지 불러오기<br><span class="error-text" style="font-size: 12px;">유효한 페이지에서 사용 가능합니다. <br>${GIT_SERVICE_INFO.gitlab.urlGuidanceMessage}</span>`;
+    button.innerHTML = `Commit 메세지 불러오기<br><span class="error-text" style="font-size: 12px;">유효한 페이지(${GIT_SERVICE_INFO.gitlab.urlGuidanceMessage})에서 사용 가능합니다.</span>`;
     previewContent.textContent = "Merge Request 페이지에서 실행해주세요";
   } else {
     button.disabled = false;
@@ -327,17 +343,36 @@ const handleStartInterceptorCommit = async (
   button.disabled = true;
 
   try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    if (!tab?.id) {
-      throw new Error("활성 탭을 찾을 수 없습니다.");
+    let targetTabId: number | undefined;
+
+    // 현재 URL에서 originalTabId 파라미터를 확인
+    const urlParams = new URLSearchParams(window.location.search);
+    const originalTabIdParam = urlParams.get("originalTabId");
+
+    if (originalTabIdParam) {
+      // 파라미터가 있으면 해당 ID 사용
+      targetTabId = parseInt(originalTabIdParam, 10);
+      if (isNaN(targetTabId)) {
+        throw new Error("Invalid originalTabId parameter.");
+      }
+      console.log("Using originalTabId from URL parameter:", targetTabId);
+    } else {
+      // 파라미터가 없으면 (일반 팝업), 활성 탭 ID 사용
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      targetTabId = tab?.id;
+      console.log("Using active tab ID:", targetTabId);
+    }
+
+    if (!targetTabId) {
+      throw new Error("유효한 대상 탭 ID를 찾을 수 없습니다.");
     }
 
     const response = await MessageDispatcher.sendSuccess(
       "START_INTERCEPTOR_COMMIT",
-      { targetTabId: tab.id }
+      { targetTabId: targetTabId } // 결정된 targetTabId 전달
     );
 
     if (response.status === "success") {

@@ -15,6 +15,43 @@ const commitInterceptorService = new CommitInterceptorService(
   debuggerService
 );
 
+const CONTEXT_MENU_ID = "openCommitExtractorPopup";
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: CONTEXT_MENU_ID,
+    title: "CommitExtractor",
+    contexts: ["page"],
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === CONTEXT_MENU_ID) {
+    const originalTabId = tab?.id;
+    const originalUrl = tab?.url;
+
+    if (!originalTabId || !originalUrl) {
+      console.error("Could not get the original tab ID or URL.");
+      return;
+    }
+
+    const encodedUrl = encodeURIComponent(originalUrl);
+    const popupUrl = chrome.runtime.getURL(
+      `base.html?originalTabId=${originalTabId}&originalUrl=${encodedUrl}`
+    );
+
+    const windowWidth = 800;
+    const windowHeight = 600;
+
+    chrome.windows.create({
+      url: popupUrl,
+      type: "popup",
+      width: windowWidth,
+      height: windowHeight,
+    });
+  }
+});
+
 chrome.runtime.onMessage.addListener(
   (message: MessagePayload<{ targetTabId: number }>, sender, sendResponse) => {
     if (message.action === "START_INTERCEPTOR_COMMIT") {
