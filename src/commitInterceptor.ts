@@ -8,6 +8,7 @@ import {
 import { GitlabCommitParser } from "./services/git/parser/GitlabCommitParser";
 import { CommitMessageFormatter } from "./services/git/parser/CommitMessageFormatter";
 import { GIT_SERVICE_INFO } from "./services/git/types";
+import { initializeContextMenu } from "./contextMenuHandler";
 
 const debuggerService = new DebuggerService();
 const commitInterceptorService = new CommitInterceptorService(
@@ -15,11 +16,14 @@ const commitInterceptorService = new CommitInterceptorService(
   debuggerService
 );
 
+initializeContextMenu();
+
 chrome.runtime.onMessage.addListener(
   (message: MessagePayload<{ targetTabId: number }>, sender, sendResponse) => {
     if (message.action === "START_INTERCEPTOR_COMMIT") {
       const targetTabId = message.data?.targetTabId;
       if (!targetTabId) {
+        console.error("Target tab ID missing for START_INTERCEPTOR_COMMIT");
         sendResponse({ status: "error", message: "탭 ID가 없습니다." });
         return true;
       }
@@ -32,7 +36,6 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
-// 네트워크 응답 처리
 chrome.debugger.onEvent.addListener((source, method, params) => {
   if (method === "Network.responseReceived") {
     handleNetworkResponse(source, params);
@@ -41,10 +44,6 @@ chrome.debugger.onEvent.addListener((source, method, params) => {
 
 async function handleNetworkResponse(source, params) {
   if (!commitInterceptorService.isTaskExecutionActive()) return;
-
-  // FIXME 의존성 분리 필요(이유는 모르겠으나 에러도 안찍힘)
-  // const siteInfo = getGitInfo();
-  // const { parser } = siteInfo;
 
   if (params.response.url.includes(GIT_SERVICE_INFO.gitlab.apiEndpoint)) {
     try {
@@ -69,7 +68,10 @@ async function handleNetworkResponse(source, params) {
             "INTERCEPTOR_COMMIT_FAILED",
             "커밋 데이터 파싱 실패"
           );
+          commitInterceptorService.detachDebugger(source.tabId);
         }
+      } else {
+        console.warn("Response body was empty for request:", params.requestId);
       }
     } catch (error) {
       console.error("Response body error:", error);
@@ -77,6 +79,7 @@ async function handleNetworkResponse(source, params) {
         "INTERCEPTOR_COMMIT_FAILED",
         "응답 데이터 가져오기 실패"
       );
+      commitInterceptorService.detachDebugger(source.tabId);
     }
   }
 }
