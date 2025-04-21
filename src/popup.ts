@@ -4,6 +4,11 @@ import {
   MessageDispatcher,
   MessagePayload,
 } from "./services/MessageDispatcher";
+import {
+  loadPopupState,
+  savePopupState,
+  PopupState,
+} from "./services/popupStorageService";
 
 interface StatusElements {
   button: HTMLButtonElement;
@@ -19,17 +24,6 @@ interface StatusElements {
   regexInputContainer: HTMLDivElement;
   cleanRegexInput: HTMLInputElement;
   resetCleanRegexButton: HTMLButtonElement;
-}
-
-interface StoredData {
-  messages: {
-    key: string;
-    text: string;
-    checked: boolean;
-  }[];
-  summary: string;
-  summaryChecked: boolean;
-  ticketRegex: string;
 }
 
 const getStatusElements = (): StatusElements | null => {
@@ -101,6 +95,38 @@ const getStatusElements = (): StatusElements | null => {
   };
 };
 
+const getCurrentStateFromDOM = (elements: StatusElements): PopupState => {
+  const {
+    messageList,
+    status,
+    summaryCheckbox,
+    ticketRegexInput,
+    cleanRegexInput,
+  } = elements;
+  const messages = Array.from(
+    messageList.querySelectorAll(".message-item")
+  ).map((item) => {
+    const checkbox = item.querySelector(
+      'input[type="checkbox"]'
+    ) as HTMLInputElement;
+    const keyInput = item.querySelector(".key-input") as HTMLInputElement;
+    const messageText = item.querySelector(".message-text") as HTMLSpanElement;
+    return {
+      key: keyInput.value.trim(),
+      text: messageText.textContent || "",
+      checked: checkbox.checked,
+    };
+  });
+
+  return {
+    messages,
+    summary: status.textContent || "",
+    summaryChecked: summaryCheckbox.checked,
+    ticketRegex: ticketRegexInput.value,
+    cleanRegex: cleanRegexInput.value,
+  };
+};
+
 const setupEventListeners = (elements: StatusElements): void => {
   const { button, previewContent } = elements;
 
@@ -132,6 +158,12 @@ const setupEventListeners = (elements: StatusElements): void => {
     copyButton,
     messageList: messageListFromElements,
     summaryCheckbox,
+    ticketRegexInput,
+    resetRegexButton,
+    toggleRegexButton,
+    regexInputContainer,
+    cleanRegexInput,
+    resetCleanRegexButton,
   } = elements;
 
   button.addEventListener("click", () => {
@@ -158,17 +190,29 @@ const setupEventListeners = (elements: StatusElements): void => {
     if (e.target instanceof HTMLInputElement && e.target.type === "checkbox") {
       updateSummary(elements);
       updatePreview(elements);
-      saveToStorage(elements);
+      savePopupState(getCurrentStateFromDOM(elements));
+    }
+  });
+
+  messageListFromElements.addEventListener("input", (e) => {
+    if (
+      e.target instanceof HTMLInputElement &&
+      e.target.classList.contains("key-input")
+    ) {
+      updateSummary(elements);
+      updatePreview(elements);
+      savePopupState(getCurrentStateFromDOM(elements));
     }
   });
 
   summaryCheckbox.addEventListener("change", () => {
     updatePreview(elements);
-    saveToStorage(elements);
+    savePopupState(getCurrentStateFromDOM(elements));
   });
 
   chrome.runtime.onMessage.addListener((message: MessagePayload) => {
     handleClipboardCopy(message, elements);
+    savePopupState(getCurrentStateFromDOM(elements));
   });
 
   messageListFromElements.addEventListener("dragstart", (e) => {
@@ -198,7 +242,7 @@ const setupEventListeners = (elements: StatusElements): void => {
 
       updateSummary(elements);
       updatePreview(elements);
-      saveToStorage(elements);
+      savePopupState(getCurrentStateFromDOM(elements));
     }
   });
 
@@ -230,33 +274,31 @@ const setupEventListeners = (elements: StatusElements): void => {
     }
   });
 
-  const { ticketRegexInput, resetRegexButton } = elements;
-
   ticketRegexInput.addEventListener("change", () => {
     const pattern = ticketRegexInput.value.replace(/^\/|\/$/g, "");
     try {
       new RegExp(pattern);
       CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
-      saveToStorage(elements);
+      savePopupState(getCurrentStateFromDOM(elements));
+      showToast(elements, "정규식이 업데이트되었습니다.", "success");
       updateSummary(elements);
       updatePreview(elements);
-      showToast(elements, "정규식이 업데이트되었습니다.", "success");
     } catch (error) {
       showToast(elements, "유효하지 않은 정규식입니다.", "error");
-      ticketRegexInput.value = CommitMessageFormatter.getDefaultTicketPattern();
+      ticketRegexInput.value = `/${CommitMessageFormatter.getDefaultTicketPattern()}/`;
+      CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
+      savePopupState(getCurrentStateFromDOM(elements));
     }
   });
 
   resetRegexButton.addEventListener("click", () => {
     ticketRegexInput.value = `/${CommitMessageFormatter.getDefaultTicketPattern()}/`;
     CommitMessageFormatter.setTicketRegex(ticketRegexInput.value);
-    saveToStorage(elements);
     updateSummary(elements);
     updatePreview(elements);
+    savePopupState(getCurrentStateFromDOM(elements));
     showToast(elements, "기본 정규식으로 초기화되었습니다.", "success");
   });
-
-  const { toggleRegexButton, regexInputContainer } = elements;
 
   toggleRegexButton.addEventListener("click", () => {
     const toggleIcon = toggleRegexButton.querySelector(".toggle-icon");
@@ -264,33 +306,33 @@ const setupEventListeners = (elements: StatusElements): void => {
     toggleIcon?.classList.toggle("open");
   });
 
-  const { cleanRegexInput, resetCleanRegexButton } = elements;
-
   cleanRegexInput.addEventListener("change", () => {
     const pattern = cleanRegexInput.value.replace(/^\/|\/$/g, "");
     try {
       new RegExp(pattern);
       CommitMessageFormatter.setCleanRegex(cleanRegexInput.value);
-      saveToStorage(elements);
-      updateSummary(elements);
-      updatePreview(elements);
+      savePopupState(getCurrentStateFromDOM(elements));
       showToast(
         elements,
         "접두사 제거 정규식이 업데이트되었습니다.",
         "success"
       );
+      updateSummary(elements);
+      updatePreview(elements);
     } catch (error) {
       showToast(elements, "유효하지 않은 정규식입니다.", "error");
       cleanRegexInput.value = CommitMessageFormatter.getDefaultCleanPattern();
+      CommitMessageFormatter.setCleanRegex(cleanRegexInput.value);
+      savePopupState(getCurrentStateFromDOM(elements));
     }
   });
 
   resetCleanRegexButton.addEventListener("click", () => {
     cleanRegexInput.value = CommitMessageFormatter.getDefaultCleanPattern();
     CommitMessageFormatter.setCleanRegex(cleanRegexInput.value);
-    saveToStorage(elements);
     updateSummary(elements);
     updatePreview(elements);
+    savePopupState(getCurrentStateFromDOM(elements));
     showToast(
       elements,
       "기본 접두사 제거 정규식으로 초기화되었습니다.",
@@ -349,21 +391,19 @@ const handleStartInterceptorCommit = async (
     const urlParams = new URLSearchParams(window.location.search);
     const originalTabIdParam = urlParams.get("originalTabId");
 
-    if (originalTabIdParam) {
-      // 파라미터가 있으면 해당 ID 사용
+    const openByContextMenu = originalTabIdParam !== null;
+
+    if (openByContextMenu) {
       targetTabId = parseInt(originalTabIdParam, 10);
       if (isNaN(targetTabId)) {
         throw new Error("Invalid originalTabId parameter.");
       }
-      console.log("Using originalTabId from URL parameter:", targetTabId);
     } else {
-      // 파라미터가 없으면 (일반 팝업), 활성 탭 ID 사용
       const [tab] = await chrome.tabs.query({
         active: true,
         currentWindow: true,
       });
       targetTabId = tab?.id;
-      console.log("Using active tab ID:", targetTabId);
     }
 
     if (!targetTabId) {
@@ -372,7 +412,7 @@ const handleStartInterceptorCommit = async (
 
     const response = await MessageDispatcher.sendSuccess(
       "START_INTERCEPTOR_COMMIT",
-      { targetTabId: targetTabId } // 결정된 targetTabId 전달
+      { targetTabId: targetTabId }
     );
 
     if (response.status === "success") {
@@ -421,7 +461,6 @@ const updateSummary = (elements: StatusElements): void => {
 
   status.textContent = summary;
   toggleSummaryCheckbox(elements);
-  saveToStorage(elements);
 };
 
 const updatePreview = (elements: StatusElements): void => {
@@ -460,34 +499,6 @@ const updatePreview = (elements: StatusElements): void => {
   previewContent.textContent = previewText;
 };
 
-const saveToStorage = async (elements: StatusElements): Promise<void> => {
-  const { messageList, status, summaryCheckbox } = elements;
-
-  const messages = Array.from(
-    messageList.querySelectorAll(".message-item")
-  ).map((item) => {
-    const checkbox = item.querySelector(
-      'input[type="checkbox"]'
-    ) as HTMLInputElement;
-    const keyInput = item.querySelector(".key-input") as HTMLInputElement;
-    const messageText = item.querySelector(".message-text") as HTMLSpanElement;
-
-    return {
-      key: keyInput.value.trim(),
-      text: messageText.textContent || "",
-      checked: checkbox.checked,
-    };
-  });
-
-  await chrome.storage.local.set({
-    storedData: {
-      messages,
-      summary: status.textContent,
-      summaryChecked: summaryCheckbox.checked,
-    },
-  });
-};
-
 const createMessageItem = (
   msg: { key: string; text: string; checked: boolean },
   index: number
@@ -508,67 +519,6 @@ const createMessageItem = (
 
   div.innerHTML = messageHtml;
   return div;
-};
-
-const loadFromStorage = async (elements: StatusElements): Promise<void> => {
-  const { messageList, status, copyButton, summaryCheckbox, ticketRegexInput } =
-    elements;
-
-  const { storedData } = (await chrome.storage.local.get("storedData")) as {
-    storedData: StoredData;
-  };
-
-  if (storedData?.messages?.length) {
-    messageList.innerHTML = "";
-    storedData.messages.forEach((msg, index) => {
-      const div = createMessageItem(msg, index);
-      messageList.appendChild(div);
-
-      const keyInput = div.querySelector(".key-input") as HTMLInputElement;
-      keyInput.addEventListener("input", () => {
-        updateSummary(elements);
-        updatePreview(elements);
-        saveToStorage(elements);
-      });
-    });
-
-    status.textContent = storedData.summary || "";
-    copyButton.disabled = false;
-  }
-
-  toggleSummaryCheckbox(elements);
-
-  if (storedData?.summaryChecked !== undefined) {
-    summaryCheckbox.checked = storedData.summaryChecked;
-  }
-
-  updatePreview(elements);
-
-  const { ticketRegex } = (await chrome.storage.local.get("ticketRegex")) as {
-    ticketRegex: string;
-  };
-
-  if (ticketRegex) {
-    ticketRegexInput.value = ticketRegex;
-    CommitMessageFormatter.setTicketRegex(ticketRegex);
-  } else {
-    ticketRegexInput.value = `/${CommitMessageFormatter.getDefaultTicketPattern()}/`;
-  }
-
-  // 처음에는 정규식 입력창을 숨김
-  elements.regexInputContainer.classList.add("hidden");
-
-  const { cleanRegex } = (await chrome.storage.local.get("cleanRegex")) as {
-    cleanRegex: string;
-  };
-
-  if (cleanRegex) {
-    elements.cleanRegexInput.value = cleanRegex;
-    CommitMessageFormatter.setCleanRegex(cleanRegex);
-  } else {
-    elements.cleanRegexInput.value =
-      CommitMessageFormatter.getDefaultCleanPattern();
-  }
 };
 
 const handleClipboardCopy = (
@@ -594,7 +544,6 @@ const handleClipboardCopy = (
         keyInput.addEventListener("input", () => {
           updateSummary(elements);
           updatePreview(elements);
-          saveToStorage(elements);
         });
       });
 
@@ -602,6 +551,7 @@ const handleClipboardCopy = (
       updatePreview(elements);
       button.disabled = false;
       copyButton.disabled = false;
+      savePopupState(getCurrentStateFromDOM(elements));
       break;
 
     case "INTERCEPTOR_COMMIT_FAILED":
@@ -616,7 +566,45 @@ const handleClipboardCopy = (
     const elements = getStatusElements();
     if (!elements) return;
 
+    const initialState = await loadPopupState();
+
+    const {
+      messageList,
+      status,
+      summaryCheckbox,
+      ticketRegexInput,
+      cleanRegexInput,
+      copyButton,
+      regexInputContainer,
+    } = elements;
+
+    messageList.innerHTML = "";
+    initialState.messages.forEach((msg, index) => {
+      const div = createMessageItem(msg, index);
+      messageList.appendChild(div);
+
+      const keyInput = div.querySelector(".key-input") as HTMLInputElement;
+      keyInput.addEventListener("input", () => {
+        updateSummary(elements);
+        updatePreview(elements);
+        savePopupState(getCurrentStateFromDOM(elements));
+      });
+    });
+
+    status.textContent = initialState.summary || "-";
+    copyButton.disabled = !initialState.messages.length;
+    summaryCheckbox.checked = initialState.summaryChecked;
+    ticketRegexInput.value = initialState.ticketRegex;
+    cleanRegexInput.value = initialState.cleanRegex;
+
+    CommitMessageFormatter.setTicketRegex(initialState.ticketRegex);
+    CommitMessageFormatter.setCleanRegex(initialState.cleanRegex);
+
+    toggleSummaryCheckbox(elements);
+    updatePreview(elements);
+
+    regexInputContainer.classList.add("hidden");
+
     setupEventListeners(elements);
-    await loadFromStorage(elements);
   });
 })();
