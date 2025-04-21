@@ -1,5 +1,11 @@
 # commitcrawler
 
+## 1.0.4
+
+### Patch Changes
+
+- 5a12ee9: 우클릭 기반의 동작 기능 추가
+
 ## 1.0.3
 
 ### Patch Changes

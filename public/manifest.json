@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
   "name": "CommitExtractor",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A tool for extracting commit messages and generating PR templates with custom regex patterns.",
-  "permissions": ["debugger", "tabs", "storage", "contextMenus"],
+  "permissions": [
+    "debugger",
+    "tabs",
+    "storage",
+    "contextMenus"
+  ],
   "host_permissions": [
     "https://*.gitlab.com/*",
     "https://*.gabia.io/*",
