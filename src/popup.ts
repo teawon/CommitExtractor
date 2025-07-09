@@ -8,6 +8,10 @@ import {
   loadPopupState,
   savePopupState,
   PopupState,
+  loadPreviewHistory,
+  addPreviewHistoryItem,
+  removePreviewHistoryItem,
+  PreviewHistoryItem,
 } from "./services/popupStorageService";
 
 interface StatusElements {
@@ -521,51 +525,138 @@ const createMessageItem = (
   return div;
 };
 
-const handleClipboardCopy = (
-  message: MessagePayload,
-  elements: StatusElements
-): void => {
-  const { button, copyButton, messageList } = elements;
+// 상태 변수: 현재 선택된 기록 ID (기록탭에서만 사용)
+let selectedHistoryId: string | null = null;
+let lastMainPreview: string = "";
 
-  switch (message.action) {
-    case "COPY_TO_CLIPBOARD":
-      const data = message.data as {
-        messages: { key: string; text: string }[];
-      };
-
-      const messages = data?.messages ?? [];
-
-      messageList.innerHTML = "";
-      messages.forEach((msg, index) => {
-        const div = createMessageItem({ ...msg, checked: true }, index);
-        messageList.appendChild(div);
-
-        const keyInput = div.querySelector(".key-input") as HTMLInputElement;
-        keyInput.addEventListener("input", () => {
-          updateSummary(elements);
-          updatePreview(elements);
-        });
-      });
-
-      updateSummary(elements);
-      updatePreview(elements);
-      button.disabled = false;
-      copyButton.disabled = false;
-      savePopupState(getCurrentStateFromDOM(elements));
-      break;
-
-    case "INTERCEPTOR_COMMIT_FAILED":
-      console.error("모니터링 실패:", message.error);
-      button.disabled = false;
-      break;
+function setPreviewContent(content: string | null) {
+  const previewContent = document.getElementById(
+    "previewContent"
+  ) as HTMLDivElement;
+  if (content === null) {
+    previewContent.textContent = "";
+  } else {
+    previewContent.textContent = content;
   }
-};
+}
 
+function getMainPreviewContent(): string {
+  // 메인탭 기준 복사 미리보기 내용 추출
+  const previewContent = document.getElementById(
+    "previewContent"
+  ) as HTMLDivElement;
+  return previewContent.textContent || "";
+}
+
+// 탭 전환 및 기록 기능 수정
+function setupTabsAndHistory() {
+  const tabMain = document.getElementById("tabMain") as HTMLButtonElement;
+  const tabHistory = document.getElementById("tabHistory") as HTMLButtonElement;
+  const mainSection = document.getElementById("mainSection") as HTMLElement;
+  const historySection = document.getElementById(
+    "historySection"
+  ) as HTMLElement;
+  const historyList = document.getElementById(
+    "historyList"
+  ) as HTMLUListElement;
+
+  function showMain() {
+    mainSection.style.display = "block";
+    historySection.style.display = "none";
+    tabMain.classList.add("active");
+    tabHistory.classList.remove("active");
+    selectedHistoryId = null;
+    setPreviewContent(lastMainPreview); // 메인 기준 데이터 표시
+  }
+  function showHistory() {
+    mainSection.style.display = "none";
+    historySection.style.display = "block";
+    tabMain.classList.remove("active");
+    tabHistory.classList.add("active");
+    selectedHistoryId = null;
+    setPreviewContent(""); // 아무것도 선택 안 했을 때 preview 비움
+    renderHistoryList();
+  }
+  tabMain.addEventListener("click", showMain);
+  tabHistory.addEventListener("click", showHistory);
+
+  async function renderHistoryList() {
+    const history = await loadPreviewHistory();
+    historyList.innerHTML = "";
+    if (history.length === 0) {
+      historyList.innerHTML =
+        '<li style="color:#888; padding:12px;">기록이 없습니다.</li>';
+      return;
+    }
+    history.forEach((item) => {
+      const li = document.createElement("li");
+      li.style.display = "flex";
+      li.style.alignItems = "center";
+      li.style.justifyContent = "space-between";
+      li.style.padding = "8px 0";
+      li.style.borderBottom = "1px solid #eee";
+      li.style.cursor = "pointer";
+      li.innerHTML = `<span style='flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>${item.content.slice(
+        0,
+        40
+      )}${
+        item.content.length > 40 ? "..." : ""
+      }</span><button class='history-delete' data-id='${
+        item.id
+      }' style='margin-left:8px;color:#dc3545;background:none;border:none;font-size:16px;cursor:pointer;'>×</button>`;
+      li.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).classList.contains("history-delete"))
+          return;
+        selectedHistoryId = item.id;
+        setPreviewContent(item.content);
+      });
+      li.querySelector(".history-delete")?.addEventListener(
+        "click",
+        async (e) => {
+          e.stopPropagation();
+          await removePreviewHistoryItem(item.id);
+          // 삭제 후, 선택된 기록이 삭제된 경우 preview 비움
+          if (selectedHistoryId === item.id) {
+            selectedHistoryId = null;
+            setPreviewContent("");
+          }
+          renderHistoryList();
+        }
+      );
+      historyList.appendChild(li);
+    });
+  }
+
+  // 기본은 메인 탭
+  showMain();
+}
+
+// Commit 메세지 불러오기 버튼 클릭 시 복사 미리보기 결과를 기록에 저장
+async function savePreviewToHistory(previewContent: string) {
+  if (!previewContent || previewContent === "선택된 항목이 여기에 표시됩니다")
+    return;
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const dateStr = `${yy}-${mm}-${dd}`;
+  const contentWithDate = `${dateStr}\n${previewContent}`;
+  const item: PreviewHistoryItem = {
+    id: Date.now().toString(),
+    content: contentWithDate,
+    createdAt: Date.now(),
+  };
+  await addPreviewHistoryItem(item);
+}
+
+// DOMContentLoaded 시 마지막 메인 preview 저장
 (async function initializePopup() {
   document.addEventListener("DOMContentLoaded", async function () {
+    setupTabsAndHistory();
     const elements = getStatusElements();
     if (!elements) return;
-
+    // 메인 preview 내용 추적
+    lastMainPreview = elements.previewContent.textContent || "";
     const initialState = await loadPopupState();
 
     const {
@@ -608,3 +699,47 @@ const handleClipboardCopy = (
     setupEventListeners(elements);
   });
 })();
+
+// handleClipboardCopy에서 메인 preview 갱신 시 lastMainPreview도 갱신
+const handleClipboardCopy = (
+  message: MessagePayload,
+  elements: StatusElements
+): void => {
+  const { button, copyButton, messageList, previewContent } = elements;
+
+  switch (message.action) {
+    case "COPY_TO_CLIPBOARD":
+      const data = message.data as {
+        messages: { key: string; text: string }[];
+      };
+
+      const messages = data?.messages ?? [];
+
+      messageList.innerHTML = "";
+      messages.forEach((msg, index) => {
+        const div = createMessageItem({ ...msg, checked: true }, index);
+        messageList.appendChild(div);
+
+        const keyInput = div.querySelector(".key-input") as HTMLInputElement;
+        keyInput.addEventListener("input", () => {
+          updateSummary(elements);
+          updatePreview(elements);
+        });
+      });
+
+      updateSummary(elements);
+      updatePreview(elements);
+      button.disabled = false;
+      copyButton.disabled = false;
+      savePopupState(getCurrentStateFromDOM(elements));
+      savePreviewToHistory(previewContent.textContent || "");
+      // 메인 preview 최신값 저장
+      lastMainPreview = previewContent.textContent || "";
+      break;
+
+    case "INTERCEPTOR_COMMIT_FAILED":
+      console.error("모니터링 실패:", message.error);
+      button.disabled = false;
+      break;
+  }
+};

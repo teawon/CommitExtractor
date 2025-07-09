@@ -1,8 +1,7 @@
 name: Release
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - develop
 
@@ -10,14 +9,19 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  create-release-pr:
-    if: github.event.pull_request.merged == true
+  release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout develop
         uses: actions/checkout@v3
         with:
+          ref: develop
           fetch-depth: 0
+
+      - name: Create or update release branch (hard reset)
+        run: |
+          git fetch origin
+          git checkout -B release origin/develop
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -28,19 +32,24 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Sync Version
+      - name: Version bump
         run: npm run version
 
-      - name: Create Release Pull Request
+      - name: Commit version bump
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore: version bump [release]" || echo "No changes to commit"
+          git push --force origin release
+
+      - name: Create PR to main
         uses: peter-evans/create-pull-request@v5
         with:
           base: main
-          head: develop
           branch: release
-          title: "🚀 Release: Merge develop to main"
+          title: "🚀 Release: Merge release to main"
           body: |
-            ## 변경사항
-            ${{ github.event.pull_request.title }}
-            ${{ github.event.pull_request.body }}
-          commit-message: "chore: merge develop to main"
-          delete-branch: true
+            ## 자동 릴리즈 PR
+            - 버저닝 커밋 포함
+          commit-message: "chore: release PR"

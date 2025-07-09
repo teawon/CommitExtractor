@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CommitExtractor",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "A tool for extracting commit messages and generating PR templates with custom regex patterns.",
   "permissions": [
     "debugger",
