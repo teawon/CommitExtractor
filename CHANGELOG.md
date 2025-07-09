@@ -1,5 +1,11 @@
 # commitcrawler
 
+## 1.1.0
+
+### Minor Changes
+
+- 589edc4: 히스토리 기능 추가
+
 ## 1.0.4
 
 ### Patch Changes
