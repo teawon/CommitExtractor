@@ -635,9 +635,15 @@ function setupTabsAndHistory() {
 async function savePreviewToHistory(previewContent: string) {
   if (!previewContent || previewContent === "선택된 항목이 여기에 표시됩니다")
     return;
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const dateStr = `${yy}-${mm}-${dd}`;
+  const contentWithDate = `${dateStr}\n${previewContent}`;
   const item: PreviewHistoryItem = {
     id: Date.now().toString(),
-    content: previewContent,
+    content: contentWithDate,
     createdAt: Date.now(),
   };
   await addPreviewHistoryItem(item);
