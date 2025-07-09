@@ -18,9 +18,10 @@ jobs:
           ref: develop
           fetch-depth: 0
 
-      - name: Create release branch
+      - name: Create or update release branch (hard reset)
         run: |
-          git checkout -b release/$(date +'%y%m%d%H%M%S')
+          git fetch origin
+          git checkout -B release origin/develop
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -39,14 +40,14 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "chore: version bump [release]"
-          git push --set-upstream origin HEAD
+          git commit -m "chore: version bump [release]" || echo "No changes to commit"
+          git push --force origin release
 
       - name: Create PR to main
         uses: peter-evans/create-pull-request@v5
         with:
           base: main
-          branch: ${{ github.ref_name }}
+          branch: release
           title: "🚀 Release: Merge release to main"
           body: |
             ## 자동 릴리즈 PR
