@@ -369,18 +369,48 @@
         outline: none;
         border-color: #339af0;
       }
+      .tab-header {
+        display: flex;
+        gap: 0;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e9ecef;
+        background: #f8f9fa;
+      }
+      .tab-button {
+        flex: 1;
+        padding: 16px 0 12px 0;
+        background: none;
+        border: none;
+        font-size: 16px;
+        font-weight: 600;
+        color: #868e96;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: color 0.2s, border-bottom 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .tab-button.active {
+        color: #339af0;
+        border-bottom: 2px solid #339af0;
+        background: #fff;
+      }
+      .tab-button:focus {
+        outline: none;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="editor-section">
-        <div
-          class="tab-header"
-          style="display: flex; gap: 8px; margin-bottom: 12px"
-        >
-          <button id="tabMain" class="tab-button" style="flex: 1">메인</button>
-          <button id="tabHistory" class="tab-button" style="flex: 1">
-            기록
+        <div class="tab-header">
+          <button id="tabMain" class="tab-button active">
+            <span style="font-size: 18px">📝</span>커밋 추출
+          </button>
+          <button id="tabHistory" class="tab-button">
+            <span style="font-size: 18px">📜</span>기록 보기
           </button>
         </div>
         <div id="mainSection">
